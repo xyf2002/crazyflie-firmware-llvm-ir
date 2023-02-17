@@ -30,6 +30,7 @@
 #include "math.h"
 
 #include "paa3905e1.h"
+#include "mem.h"
 #include "deck.h"
 #include "debug.h"
 #include "system.h"
@@ -40,13 +41,15 @@
 
 
 #define LINE_THRESHOLD 50
-
+#define PAA3905_NBR_OF_PIXELS 1225
 
 static bool isInit = false;
 static uint8_t resolution = 0xFF;//0x26;//0xFF;//0x2c;//0xFF;
 static uint8_t old_resolution = 0xFF;//0x26;//0xFF;//0x2c;//0xFF;
 
-static volatile uint8_t rawDataArray[1225];
+static volatile uint8_t rawDataArray[2][PAA3905_NBR_OF_PIXELS];
+static volatile uint8_t rawDataArrayMemFrame[PAA3905_NBR_OF_PIXELS];
+static uint8_t dblBuf = 0;
 
 static float yaw_line = 0.0f;
 // static int8_t pos_diff = 0;
@@ -58,6 +61,16 @@ static float yaw_line = 0.0f;
 
 static float dt = 0.0f;
 static uint64_t lastTime = 0;
+
+// Handling from the memory module
+static uint32_t handleMemGetSize(void) { return PAA3905_NBR_OF_PIXELS; }
+static bool handleMemRead(const uint32_t memAddr, const uint8_t readLen, uint8_t* buffer);
+static const MemoryHandlerDef_t memDef = {
+  .type = MEM_TYPE_PAA3905,
+  .getSize = handleMemGetSize,
+  .read = handleMemRead,
+  .write = 0, // Write not supported
+};
 
 static void registerWrite(const deckPin_t csPin, uint8_t reg, uint8_t value)
 {
@@ -108,13 +121,13 @@ static uint8_t registerReadFast(const deckPin_t csPin, uint8_t reg)
   // Set MSB to 0 for read
   reg &= ~0x80u;
 
-  spiBeginTransaction(SPI_BAUDRATE_2MHZ);
+  spiBeginTransaction(SPI_BAUDRATE_3MHZ);
   digitalWrite(csPin, LOW);
 
-  sleepus(2);
+//  sleepus(2);
 
   spiExchange(1, &reg, &reg);
-  sleepus(2);
+//  sleepus(2);
   spiExchange(1, &dummy, &data);
 
   digitalWrite(csPin, HIGH);
@@ -243,6 +256,8 @@ bool paa3905Init(const deckPin_t csPin)
     DEBUG_PRINT("0x5B: 0x%x\n", registerRead(csPin, 0x5B));
     registerWrite(csPin, 0x4E, resolution);
 
+    memoryRegisterHandler(&memDef);
+
     isInit = true;
   }
 
@@ -312,35 +327,43 @@ float paa3905ReadRaw(const deckPin_t csPin)
     vTaskDelay(M2T(1));
   }
   registerWrite(csPin, 0x13, 0xFF); //dummy value
-  for (int i = 0; i < 49; ++i)
+
+  for (int i = 0; i < PAA3905_NBR_OF_PIXELS; ++i)
   {
-    for (int j = 0; j < 25; ++j)
-    {
-      rawDataArray[i*25+j] = registerReadFast(csPin, 0x13);
-      // DEBUG_PRINT("%d %d %d %d %d\n", registerRead(csPin, 0x13), registerRead(csPin, 0x13), registerRead(csPin, 0x13), registerRead(csPin, 0x13), registerRead(csPin, 0x13));
-    }
-    vTaskDelay(M2T(1));
+      rawDataArray[dblBuf][i] = registerReadFast(csPin, 0x13);
   }
-  registerWrite(csPin, 0x7F, 0x00);
-  registerWrite(csPin, 0x55, 0x00);
-  registerWrite(csPin, 0x7F, 0x13);
-  registerWrite(csPin, 0x42, 0x00);
-  registerWrite(csPin, 0x7F, 0x00);
-  registerWrite(csPin, 0x67, 0xA5);
 
-  // Power on reset
-  registerWrite(csPin, 0x3a, 0x5a);
-  vTaskDelay(M2T(5));
+//  for (int i = 0; i < 49; ++i)
+//  {
+//    for (int j = 0; j < 25; ++j)
+//    {
+//      rawDataArray[dblBuf][i*25+j] = registerReadFast(csPin, 0x13);
+//      // DEBUG_PRINT("%d %d %d %d %d\n", registerRead(csPin, 0x13), registerRead(csPin, 0x13), registerRead(csPin, 0x13), registerRead(csPin, 0x13), registerRead(csPin, 0x13));
+//    }
+//    vTaskDelay(M2T(1));
+//  }
+  dblBuf = !dblBuf;
 
-  // Reading the motion registers one time
-  registerRead(csPin, 0x02);
-  registerRead(csPin, 0x03);
-  registerRead(csPin, 0x04);
-  registerRead(csPin, 0x05);
-  registerRead(csPin, 0x06);
-  vTaskDelay(M2T(1));
+//  registerWrite(csPin, 0x7F, 0x00);
+//  registerWrite(csPin, 0x55, 0x00);
+//  registerWrite(csPin, 0x7F, 0x13);
+//  registerWrite(csPin, 0x42, 0x00);
+//  registerWrite(csPin, 0x7F, 0x00);
+//  registerWrite(csPin, 0x67, 0xA5);
 
-  InitRegisters(csPin);
+//  // Power on reset
+//  registerWrite(csPin, 0x3a, 0x5a);
+//  vTaskDelay(M2T(5));
+//
+//  // Reading the motion registers one time
+//  registerRead(csPin, 0x02);
+//  registerRead(csPin, 0x03);
+//  registerRead(csPin, 0x04);
+//  registerRead(csPin, 0x05);
+//  registerRead(csPin, 0x06);
+//  vTaskDelay(M2T(1));
+
+//  InitRegisters(csPin);
   // uint8_t temp_min = 255;
   // uint8_t global_temp_min = 255;
   // for (int i = 0; i < 35; ++i)
@@ -389,6 +412,20 @@ float paa3905ReadRaw(const deckPin_t csPin)
   
 }
 
+static bool handleMemRead(const uint32_t memAddr, const uint8_t readLen, uint8_t* buffer)
+{
+  if (memAddr == 0)
+  {
+    memcpy((void *)rawDataArrayMemFrame, (void *)rawDataArray[!dblBuf], PAA3905_NBR_OF_PIXELS);
+  }
+
+  if (memAddr + readLen <= PAA3905_NBR_OF_PIXELS)
+  {
+    memcpy((void *)buffer, (void *)(&rawDataArrayMemFrame[memAddr]), readLen);
+  }
+
+  return true;
+}
 
 
 PARAM_GROUP_START(flow)

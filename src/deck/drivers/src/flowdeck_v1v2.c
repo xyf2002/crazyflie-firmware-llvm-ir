@@ -73,7 +73,7 @@ static bool isInit2 = false;
 
 motionBurst3905_t currentMotion;
 
-static bool flowRawRead = false;
+static bool flowRawRead = true;
 
 // Disables pushing the flow measurement in the EKF
 static bool useFlowDisabled = false;
@@ -103,92 +103,94 @@ static void flowdeckTask(void *param)
     counter++;
 
     if (flowRawRead)
-      {
-        yaw_line = flowdeckReadRaw();
-      }
+    {
+      yaw_line = flowdeckReadRaw();
+    }
+    else
+    {
+      paa3905ReadMotion(NCS_PIN, &currentMotion);
+      flowMeasurement_t flowData;
+      flowData.dt = (float)(usecTimestamp()-lastTime)/1000000.0f;
+      lastTime = usecTimestamp();
 
-    paa3905ReadMotion(NCS_PIN, &currentMotion);
-    flowMeasurement_t flowData;
-    flowData.dt = (float)(usecTimestamp()-lastTime)/1000000.0f;
-    lastTime = usecTimestamp();
+      flowMode = currentMotion.observation >> 6;
 
-    flowMode = currentMotion.observation >> 6;
+      // Flip motion information to comply with sensor mounting
+      // (might need to be changed if mounted differently)
+      int16_t accpx = -currentMotion.deltaY;
+      int16_t accpy = -currentMotion.deltaX;
+      shutter = currentMotion.shutter_h << 16 |
+                currentMotion.shutter_m << 8 |
+                currentMotion.shutter_l;
 
-    // Flip motion information to comply with sensor mounting
-    // (might need to be changed if mounted differently)
-    int16_t accpx = -currentMotion.deltaY;
-    int16_t accpy = -currentMotion.deltaX;
-    shutter = currentMotion.shutter_h << 16 |
-              currentMotion.shutter_m << 8 |
-              currentMotion.shutter_l;
+      // Outlier removal
+      if (abs(accpx) < OULIER_LIMIT && abs(accpy) < OULIER_LIMIT) {
+        /* if ((flowMode == BRIGHT_MODE && currentMotion.squal > BRIGHT_MODE_MIN_SQUAL && shutter <= BRIGHT_MODE_MAX_SHUTTER) || \
+        //   (flowMode == LOW_LIGHT_MODE && currentMotion.squal > LOW_LIGHT_MODE_MIN_SQUAL && shutter <= LOW_LIGHT_MODE_MAX_SHUTTER) || \
+        //     (flowMode == SUPER_LOW_LIGHT_MODE && currentMotion.squal > SUPER_LOW_LIGHT_MODE_MIN_SQUAL && shutter <= SUPER_LOW_LIGHT_MODE_MAX_SHUTTER))
+         {*/
+          if (useAdaptiveStd)
+          {
+            // The standard deviation is fitted by measurements flying over low and high texture
+            //   and looking at the shutter time
+            stdFlow=0.0007984f *shutter + 0.4335f;
 
-    // Outlier removal
-    if (abs(accpx) < OULIER_LIMIT && abs(accpy) < OULIER_LIMIT) {
-      /* if ((flowMode == BRIGHT_MODE && currentMotion.squal > BRIGHT_MODE_MIN_SQUAL && shutter <= BRIGHT_MODE_MAX_SHUTTER) || \
-      //   (flowMode == LOW_LIGHT_MODE && currentMotion.squal > LOW_LIGHT_MODE_MIN_SQUAL && shutter <= LOW_LIGHT_MODE_MAX_SHUTTER) || \
-      //     (flowMode == SUPER_LOW_LIGHT_MODE && currentMotion.squal > SUPER_LOW_LIGHT_MODE_MIN_SQUAL && shutter <= SUPER_LOW_LIGHT_MODE_MAX_SHUTTER))
-       {*/
-        if (useAdaptiveStd)
-        {
-          // The standard deviation is fitted by measurements flying over low and high texture
-          //   and looking at the shutter time
-          stdFlow=0.0007984f *shutter + 0.4335f;
-
-          // The formula with the amount of features instead
-          /*float squal_f = (float)currentMotion.squal;
-          stdFlow =  -0.01257f * squal_f + 4.406f; */
-          if (stdFlow < 0.1f) stdFlow=0.1f;
-        } else {
-          stdFlow = flowStdFixed;
-        }
-
-        // Form flow measurement struct and push into the EKF
-        flowData.stdDevX = stdFlow;
-        flowData.stdDevY = stdFlow;
-        // flowData.dt = 0.01;
-
-    #if defined(USE_MA_SMOOTHING)
-          // Use MA Smoothing
-          pixelAverages.averageX[pixelAverages.ptr] = (float32_t)accpx;
-          pixelAverages.averageY[pixelAverages.ptr] = (float32_t)accpy;
-
-          float32_t meanX;
-          float32_t meanY;
-
-          arm_mean_f32(pixelAverages.averageX, AVERAGE_HISTORY_LENGTH, &meanX);
-          arm_mean_f32(pixelAverages.averageY, AVERAGE_HISTORY_LENGTH, &meanY);
-
-          pixelAverages.ptr = (pixelAverages.ptr + 1) % AVERAGE_HISTORY_LENGTH;
-
-          flowData.dpixelx = (float)meanX;   // [pixels]
-          flowData.dpixely = (float)meanY;   // [pixels]
-    #elif defined(USE_LP_FILTER)
-          // Use LP filter measurements
-          flowData.dpixelx = LP_CONSTANT * dpixelx_previous + (1.0f - LP_CONSTANT) * (float)accpx;
-          flowData.dpixely = LP_CONSTANT * dpixely_previous + (1.0f - LP_CONSTANT) * (float)accpy;
-          dpixelx_previous = flowData.dpixelx;
-          dpixely_previous = flowData.dpixely;
-    #else
-          // Use raw measurements
-          flowData.dpixelx = (float)accpx;
-          flowData.dpixely = (float)accpy;
-    #endif
-          // Push measurements into the estimator if flow is not disabled
-          //    and the PMW flow sensor indicates motion detection
-          if (!useFlowDisabled && (currentMotion.motion & 0x80)) {
-            flowDeltaX = accpx;
-            flowDeltaY = accpy;
-            estimatorEnqueueFlow(&flowData);
+            // The formula with the amount of features instead
+            /*float squal_f = (float)currentMotion.squal;
+            stdFlow =  -0.01257f * squal_f + 4.406f; */
+            if (stdFlow < 0.1f) stdFlow=0.1f;
           } else {
-            flowDeltaX = 0;
-            flowDeltaY = 0;
+            stdFlow = flowStdFixed;
           }
-        } else {
-          outlierCount++;
-        }
-    //   } else {
-    //   outlierCount++;
-    // }
+
+          // Form flow measurement struct and push into the EKF
+          flowData.stdDevX = stdFlow;
+          flowData.stdDevY = stdFlow;
+          // flowData.dt = 0.01;
+
+      #if defined(USE_MA_SMOOTHING)
+            // Use MA Smoothing
+            pixelAverages.averageX[pixelAverages.ptr] = (float32_t)accpx;
+            pixelAverages.averageY[pixelAverages.ptr] = (float32_t)accpy;
+
+            float32_t meanX;
+            float32_t meanY;
+
+            arm_mean_f32(pixelAverages.averageX, AVERAGE_HISTORY_LENGTH, &meanX);
+            arm_mean_f32(pixelAverages.averageY, AVERAGE_HISTORY_LENGTH, &meanY);
+
+            pixelAverages.ptr = (pixelAverages.ptr + 1) % AVERAGE_HISTORY_LENGTH;
+
+            flowData.dpixelx = (float)meanX;   // [pixels]
+            flowData.dpixely = (float)meanY;   // [pixels]
+      #elif defined(USE_LP_FILTER)
+            // Use LP filter measurements
+            flowData.dpixelx = LP_CONSTANT * dpixelx_previous + (1.0f - LP_CONSTANT) * (float)accpx;
+            flowData.dpixely = LP_CONSTANT * dpixely_previous + (1.0f - LP_CONSTANT) * (float)accpy;
+            dpixelx_previous = flowData.dpixelx;
+            dpixely_previous = flowData.dpixely;
+      #else
+            // Use raw measurements
+            flowData.dpixelx = (float)accpx;
+            flowData.dpixely = (float)accpy;
+      #endif
+            // Push measurements into the estimator if flow is not disabled
+            //    and the PMW flow sensor indicates motion detection
+            if (!useFlowDisabled && (currentMotion.motion & 0x80)) {
+              flowDeltaX = accpx;
+              flowDeltaY = accpy;
+              estimatorEnqueueFlow(&flowData);
+            } else {
+              flowDeltaX = 0;
+              flowDeltaY = 0;
+            }
+          } else {
+            outlierCount++;
+          }
+      //   } else {
+      //   outlierCount++;
+      // }
+    }
   }
 }
 
