@@ -23,6 +23,7 @@ VTMPL_COMMAND_SILENT="  VTMPL $@"
 CC_COMMAND=$(CC) $(CFLAGS) -c $< -o $(BIN)/$@
 CC_COMMAND_SILENT="  CC    $@"
 .c.o:
+	@echo "CC_COMMAND: " ${CC_COMMAND}
 	@$(if $(QUIET), ,echo $(CC_COMMAND$(VERBOSE)) )
 	@$(CC_COMMAND)
 

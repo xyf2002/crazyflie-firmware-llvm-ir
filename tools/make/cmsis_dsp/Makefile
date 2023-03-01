@@ -26,12 +26,13 @@ CFLAGS += -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16
 CFLAGS += -DARM_MATH_CM4 -D__FPU_PRESENT=1 -ffunction-sections -fdata-sections
 
 CROSS_COMPILE     ?= arm-none-eabi-
-CC = $(CROSS_COMPILE)gcc
-AR = $(CROSS_COMPILE)ar
+CC = clang
+AR = llvm-ar
 
 all: $(LIB)
 
 $(LIB): $(DSP_OBJ) #$(foreach o,$(DSP_OBJ),$(BIN)/$(o))
+	@echo "CC: " $(CC)
 	@$(AR) rcs $@ $(foreach o,$(DSP_OBJ),$(BIN)/$(o))
 	@echo "  AR    libarm_math.a"
 

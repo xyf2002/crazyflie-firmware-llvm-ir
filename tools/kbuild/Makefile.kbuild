@@ -214,8 +214,8 @@ CONFIG_SHELL := $(shell if [ -x "$$BASH" ]; then echo $$BASH; \
 	  else if [ -x /bin/bash ]; then echo /bin/bash; \
 	  else echo sh; fi ; fi)
 
-HOSTCC       = gcc
-HOSTCXX      = g++
+HOSTCC       = clang
+HOSTCXX      = clang++
 HOSTCFLAGS   = -Wall -Wmissing-prototypes -Wstrict-prototypes -O2
 HOSTCFLAGS  += -fomit-frame-pointer -std=gnu89
 HOSTCXXFLAGS = -O2
@@ -244,20 +244,20 @@ scripts/Kbuild.include: ;
 include scripts/Kbuild.include
 
 # Make variables (CC, etc...)
-AS		= $(CROSS_COMPILE)as
-LD		= $(CROSS_COMPILE)gcc
-CC		= $(CROSS_COMPILE)gcc
-CXX		= $(CROSS_COMPILE)g++
-CPP		= $(CC) -E
-AR		= $(CROSS_COMPILE)ar
-NM		= $(CROSS_COMPILE)nm
-STRIP	= $(CROSS_COMPILE)strip
-OBJCOPY	= $(CROSS_COMPILE)objcopy
-OBJDUMP	= $(CROSS_COMPILE)objdump
-SIZE    = $(CROSS_COMPILE)size
+AS		= llvm-as
+LD		= clang
+CC		= clang
+CXX		= clang++
+CPP		= clang++
+AR		= llvm-ar
+NM		= llvm-nm-13
+STRIP	= llvm-strip-13
+OBJCOPY	= llvm-objcopy-13
+OBJDUMP	= llvm-objdump-13
+SIZE    = llvm-size-13
 
 ifneq ($(OOT_USES_CXX),)
-LD		= $(CROSS_COMPILE)g++
+LD		= clang++
 endif
 
 AWK		= awk
@@ -517,13 +517,13 @@ KBUILD_CFLAGS	+= $(call cc-option,-fno-strict-overflow)
 KBUILD_CFLAGS   += $(call cc-option,-fconserve-stack)
 
 # disallow errors like 'EXPORT_GPL(foo);' with missing header
-KBUILD_CFLAGS   += $(call cc-option,-Werror=implicit-int)
+KBUILD_CFLAGS   += $(call cc-option,=implicit-int)
 
 # Prohibit date/time macros, which would make the build non-deterministic
-KBUILD_CFLAGS   += $(call cc-option,-Werror=date-time)
+KBUILD_CFLAGS   += $(call cc-option,=date-time)
 
 # enforce correct pointer usage
-# KBUILD_CFLAGS   += $(call cc-option,-Werror=incompatible-pointer-types)
+# KBUILD_CFLAGS   += $(call cc-option,=incompatible-pointer-types)
 
 # use the deterministic mode of AR if available
 KBUILD_ARFLAGS := $(call ar-option,D)

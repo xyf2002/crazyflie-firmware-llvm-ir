@@ -10,6 +10,9 @@ LOAD_ADDRESS_CLOAD_stm32f4 = 0x8004000
 
 PYTHON            ?= python3
 
+LLVM_CONFIG=llvm-config
+CC=clang
+
 # Cload is handled in a special way on windows in WSL to use the Windows python interpreter
 ifdef WSL_DISTRO_NAME
 CLOAD_SCRIPT      ?= python.exe -m cfloader
@@ -25,19 +28,21 @@ CLOAD_ARGS        ?=
 ARCH := stm32f4
 SRCARCH := stm32f4
 
-ARCH_CFLAGS += -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -g3
-ARCH_CFLAGS += -fno-math-errno -DARM_MATH_CM4 -D__FPU_PRESENT=1 -mfp16-format=ieee
+ARCH_CFLAGS += -target arm-none-eabi
+ARCH_CFLAGS += -march=armv7e-m -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -g3
+ARCH_CFLAGS += -fno-math-errno -DARM_MATH_CM4 -D__FPU_PRESENT=1
 ARCH_CFLAGS += -Wno-array-bounds -Wno-stringop-overread
 ARCH_CFLAGS += -Wno-stringop-overflow
 ARCH_CFLAGS += -DSTM32F4XX -DSTM32F40_41xxx -DHSE_VALUE=8000000 -DUSE_STDPERIPH_DRIVER
+ARCH_CFLAGS += --sysroot="/usr/include/newlib/c++/10.3.1/arm-none-eabi"
 
 FREERTOS = $(srctree)/vendor/FreeRTOS
 PORT = $(FREERTOS)/portable/GCC/ARM_CM4F
 LIB = $(srctree)/src/lib
-PROCESSOR = -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
+#PROCESSOR = -mcpu=cortex-m4
 LINKER_DIR = $(srctree)/tools/make/F405/linker
 
-LDFLAGS += --specs=nosys.specs --specs=nano.specs $(PROCESSOR) -nostdlib
+LDFLAGS += -nostdlib
 image_LDFLAGS += -Wl,-Map=$(PROG).map,--cref,--gc-sections,--undefined=uxTopUsedPriority
 image_LDFLAGS += -L$(srctree)/tools/make/F405/linker
 image_LDFLAGS += -T $(LINKER_DIR)/FLASH_CLOAD.ld
@@ -60,6 +65,8 @@ INCLUDES += -I$(LIB)/STM32_USB_OTG_Driver/inc
 INCLUDES += -I$(LIB)/STM32F4xx_StdPeriph_Driver/inc
 INCLUDES += -I$(LIB)/vl53l1 -I$(LIB)/vl53l1/core/inc
 INCLUDES += -I$(KBUILD_OUTPUT)/include/generated
+INCLUDES += -I/usr/arm-linux-gnueabihf/include
+INCLUDES += -I/usr/arm-linux-gnueabi/include
 
 # Here we tell Kbuild where to look for Kbuild files which will tell the
 # buildsystem which sources to build
@@ -113,7 +120,7 @@ PROG ?= $(PLATFORM)
 ifeq ($(CONFIG_DEBUG),y)
 ARCH_CFLAGS	+= -O0 -Wconversion
 else
-ARCH_CFLAGS += -Os -Werror
+ARCH_CFLAGS += -Os
 endif
 
 _all:
