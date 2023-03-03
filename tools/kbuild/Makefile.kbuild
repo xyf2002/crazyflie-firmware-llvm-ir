@@ -245,7 +245,7 @@ include scripts/Kbuild.include
 
 # Make variables (CC, etc...)
 AS		= llvm-as
-LD		= clang
+LD		= arm-none-eabi-ld
 CC		= clang
 CXX		= clang++
 CPP		= clang++
@@ -257,7 +257,7 @@ OBJDUMP	= llvm-objdump-13
 SIZE    = llvm-size-13
 
 ifneq ($(OOT_USES_CXX),)
-LD		= clang++
+LD		= arm-none-eabi-ld
 endif
 
 AWK		= awk
@@ -270,6 +270,9 @@ CHECKFLAGS     := -D__linux__ -Dlinux -D__STDC__ -Dunix -D__unix__ \
 NOSTDINC_FLAGS  =
 CFLAGS_KERNEL	=
 AFLAGS_KERNEL	=
+
+LD		= arm-none-eabi-ld
+LDFLAGS += -nostdlib -lc_nano -lm -L/usr/lib/arm-none-eabi/newlib -L/usr/lib/gcc/arm-none-eabi/10.3.1
 
 # Use firmwareINCLUDE when you must reference the include/ directory.
 # Needed to be compatible with the O= option

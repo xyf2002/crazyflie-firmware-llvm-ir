@@ -4,6 +4,10 @@ ccflags-y  += $(EXTRA_CFLAGS)
 cppflags-y += $(EXTRA_CPPFLAGS)
 ldflags-y  += $(EXTRA_LDFLAGS)
 
+LD		= arm-none-eabi-ld
+LDFLAGS += -v -nostdlib -lc_nano -lm -L/usr/lib/arm-none-eabi/newlib -L/usr/lib/gcc/arm-none-eabi/10.3.1
+ldflags-y += -v -nostdlib -lc_nano -lm -L/usr/lib/arm-none-eabi/newlib -L/usr/lib/gcc/arm-none-eabi/10.3.1
+
 #
 # flags that take effect in sub directories
 export KBUILD_SUBDIR_ASFLAGS := $(KBUILD_SUBDIR_ASFLAGS) $(subdir-asflags-y)

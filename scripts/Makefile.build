@@ -27,6 +27,11 @@ ldflags-y  :=
 subdir-asflags-y :=
 subdir-ccflags-y :=
 
+LD		= arm-none-eabi-ld
+LDFLAGS += -v -nostdlib -lc_nano -lm -L/usr/lib/arm-none-eabi/newlib -L/usr/lib/gcc/arm-none-eabi/10.3.1
+EXTRA_LDFLAGS += -v -nostdlib -lc_nano -lm -L/usr/lib/arm-none-eabi/newlib -L/usr/lib/gcc/arm-none-eabi/10.3.1
+ldflags-y += -v -nostdlib -lc_nano -lm -L/usr/lib/arm-none-eabi/newlib -L/usr/lib/gcc/arm-none-eabi/10.3.1
+
 # Read auto.conf if it exists, otherwise ignore
 -include include/config/auto.conf
 

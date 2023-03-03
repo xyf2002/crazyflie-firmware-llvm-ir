@@ -12,6 +12,23 @@ PYTHON            ?= python3
 
 LLVM_CONFIG=llvm-config
 CC=clang
+#RANLIB_FOR_TARGET=arm-none-eabi-ranlib READELF_FOR_TARGET=arm-none-eabi-readelf STRIP_FOR_TARGET=arm-none-eabi-strip SED=/bin/sed
+#AR=arm-none-eabi-ar
+#AS=arm-none-eabi-as
+#LD=arm-none-eabi-ld
+#NM=arm-none-eabi-nm
+#OBJDUMP=arm-none-eabi-objdump
+AS		= llvm-as
+LD		= arm-none-eabi-ld
+CC		= clang
+CXX		= clang++
+CPP		= clang++
+AR		= llvm-ar
+NM		= llvm-nm-13
+STRIP	= llvm-strip-13
+OBJCOPY	= llvm-objcopy-13
+OBJDUMP	= llvm-objdump-13
+SIZE    = llvm-size-13
 
 # Cload is handled in a special way on windows in WSL to use the Windows python interpreter
 ifdef WSL_DISTRO_NAME
@@ -28,6 +45,7 @@ CLOAD_ARGS        ?=
 ARCH := stm32f4
 SRCARCH := stm32f4
 
+ARCH_CFLAGS += --rtlib=compiler-rt --rtlib=libgcc --stdlib=libc++ --stdlib=libstdc++ -fuse-ld=lld
 ARCH_CFLAGS += --target=arm-none-eabi -fshort-enums -v -fno-verbose-asm -D__GCC_HAVE_DWARF2_CFI_ASM=1 -Os
 ARCH_CFLAGS += -march=armv7e-m+fp -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 -g3
 ARCH_CFLAGS += -specs=nosys.specs -specs=nano.specs
@@ -47,8 +65,12 @@ LIB = $(srctree)/src/lib
 PROCESSOR = -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
 LINKER_DIR = $(srctree)/tools/make/F405/linker
 
-LDFLAGS += --specs=nosys.specs --specs=nano.specs $(PROCESSOR) -nostdlib
-image_LDFLAGS += -Wl,-Map=$(PROG).map,--cref,--gc-sections,--undefined=uxTopUsedPriority
+LDFLAGS += -v -nostdlib -lc_nano -lm -L/usr/lib/arm-none-eabi/newlib -L/usr/lib/gcc/arm-none-eabi/10.3.1
+#LDFLAGS += --specs=nosys.specs --specs=nano.specs $(PROCESSOR) -nostdlib
+#image_LDFLAGS += -Wl,-Map=$(PROG).map,--cref,--gc-sections,--undefined=uxTopUsedPriority
+image_LDFLAGS += -v -lc_nano -Map=$(PROG).map -nostdlib -lm -L/usr/lib/arm-none-eabi/newlib -L/usr/lib/gcc/arm-none-eabi/10.3.1
+image_LDFLAGS += --gc-sections
+image_LDFLAGS += -u uxTopUsedPriority
 image_LDFLAGS += -L$(srctree)/tools/make/F405/linker
 image_LDFLAGS += -T $(LINKER_DIR)/FLASH_CLOAD.ld
 image_LDFLAGS += -L/usr/lib/arm-none-eabi/newlib -L/usr/lib/gcc/arm-none-eabi/10.3.1
