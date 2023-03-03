@@ -209,16 +209,18 @@ $(obj)/%.lst: $(src)/%.c FORCE
 # Compile assembler sources (.S)
 # ---------------------------------------------------------------------------
 
-modkern_aflags := $(KBUILD_AFLAGS_KERNEL) $(AFLAGS_KERNEL)
+EXTRA_AFLAGS += --target=arm-none-eabi -march=armv7e-m+fp -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16  -fshort-enums -v -fno-verbose-asm -D__GCC_HAVE_DWARF2_CFI_ASM=1
 
-quiet_cmd_cpp_s_S = CPP $(quiet_modtag) $@
-cmd_cpp_s_S       = $(CPP) $(a_flags) -o $@ $<
+modkern_aflags := $(KBUILD_AFLAGS_KERNEL) $(AFLAGS_KERNEL) $(EXTRA_AFLAGS)
+
+quiet_cmd_cpp_s_S = CPP $(quiet_modtag) $(EXTRA_AFLAGS) $@
+cmd_cpp_s_S       = $(CPP) $(a_flags) $(EXTRA_AFLAGS) -o $@ $<
 
 $(obj)/%.s: $(src)/%.S FORCE
 	$(call if_changed_dep,cpp_s_S)
 
-quiet_cmd_as_o_S = AS $(quiet_modtag)  $@
-cmd_as_o_S       = $(CC) $(a_flags) -c -o $@ $<
+quiet_cmd_as_o_S = AS $(quiet_modtag) $(EXTRA_AFLAGS) $@
+cmd_as_o_S       = $(CC) $(a_flags) $(EXTRA_AFLAGS) -c -o $@ $<
 
 $(obj)/%.o: $(src)/%.S $(objtool_obj) FORCE
 	$(call if_changed_rule,as_o_S)

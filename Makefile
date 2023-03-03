@@ -28,24 +28,30 @@ CLOAD_ARGS        ?=
 ARCH := stm32f4
 SRCARCH := stm32f4
 
-ARCH_CFLAGS += -target arm-none-eabi
-ARCH_CFLAGS += -march=armv7e-m -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16 -g3
+ARCH_CFLAGS += --target=arm-none-eabi -fshort-enums -v -fno-verbose-asm -D__GCC_HAVE_DWARF2_CFI_ASM=1 -Os
+ARCH_CFLAGS += -march=armv7e-m+fp -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16 -g3
+ARCH_CFLAGS += -specs=nosys.specs -specs=nano.specs
 ARCH_CFLAGS += -fno-math-errno -DARM_MATH_CM4 -D__FPU_PRESENT=1
 ARCH_CFLAGS += -Wno-array-bounds -Wno-stringop-overread
 ARCH_CFLAGS += -Wno-stringop-overflow
 ARCH_CFLAGS += -DSTM32F4XX -DSTM32F40_41xxx -DHSE_VALUE=8000000 -DUSE_STDPERIPH_DRIVER
-ARCH_CFLAGS += --sysroot="/usr/include/newlib/c++/10.3.1/arm-none-eabi"
+ARCH_CFLAGS += --sysroot=/usr/lib/arm-none-eabi
+
+EXTRA_AFLAGS += --target=arm-none-eabi -march=armv7e-m+fp -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16  -fshort-enums -v -fno-verbose-asm -D__GCC_HAVE_DWARF2_CFI_ASM=1
+
+EXTRA_CFLAGS += --target=arm-none-eabi -march=armv7e-m+fp -mthumb -mcpu=cortex-m4 -mfloat-abi=hard -mfpu=fpv4-sp-d16  -fshort-enums -v -fno-verbose-asm -D__GCC_HAVE_DWARF2_CFI_ASM=1
 
 FREERTOS = $(srctree)/vendor/FreeRTOS
 PORT = $(FREERTOS)/portable/GCC/ARM_CM4F
 LIB = $(srctree)/src/lib
-#PROCESSOR = -mcpu=cortex-m4
+PROCESSOR = -mcpu=cortex-m4 -mthumb -mfloat-abi=hard -mfpu=fpv4-sp-d16
 LINKER_DIR = $(srctree)/tools/make/F405/linker
 
-LDFLAGS += -nostdlib
+LDFLAGS += --specs=nosys.specs --specs=nano.specs $(PROCESSOR) -nostdlib
 image_LDFLAGS += -Wl,-Map=$(PROG).map,--cref,--gc-sections,--undefined=uxTopUsedPriority
 image_LDFLAGS += -L$(srctree)/tools/make/F405/linker
 image_LDFLAGS += -T $(LINKER_DIR)/FLASH_CLOAD.ld
+image_LDFLAGS += -L/usr/lib/arm-none-eabi/newlib -L/usr/lib/gcc/arm-none-eabi/10.3.1
 
 INCLUDES += -I$(srctree)/vendor/CMSIS/CMSIS/Core/Include -I$(srctree)/vendor/CMSIS/CMSIS/DSP/Include
 INCLUDES += -I$(srctree)/vendor/libdw1000/inc
@@ -118,7 +124,7 @@ PLATFORM  ?= cf2
 PROG ?= $(PLATFORM)
 
 ifeq ($(CONFIG_DEBUG),y)
-ARCH_CFLAGS	+= -O0 -Wconversion
+ARCH_CFLAGS	+= -Os -Wconversion
 else
 ARCH_CFLAGS += -Os
 endif
