@@ -317,6 +317,7 @@ static void sensorsTask(void *param)
          processAccScale(accelRaw.x, accelRaw.y, accelRaw.z);
       }
 
+//	    DEBUG_PRINT("\ncalculation in sensorsTask\n");
       /* Gyro */
       gyroScaledIMU.x =  (gyroRaw.x - gyroBias.x) * SENSORS_BMI088_DEG_PER_LSB_CFG;
       gyroScaledIMU.y =  (gyroRaw.y - gyroBias.y) * SENSORS_BMI088_DEG_PER_LSB_CFG;
@@ -661,6 +662,7 @@ static bool processAccScale(int16_t ax, int16_t ay, int16_t az)
 {
   if (!accScaleFound)
   {
+//	  DEBUG_PRINT("\nsqrtf in processAccScale\n");
     accScaleSum += sqrtf(powf(ax * SENSORS_BMI088_G_PER_LSB_CFG, 2) + powf(ay * SENSORS_BMI088_G_PER_LSB_CFG, 2) + powf(az * SENSORS_BMI088_G_PER_LSB_CFG, 2));
     accScaleSumCount++;
 
@@ -762,6 +764,7 @@ static void sensorsCalculateVarianceAndMean(BiasObj* bias, Axis3f* varOut, Axis3
   int64_t sum[GYRO_NBR_OF_AXES] = {0};
   int64_t sumSq[GYRO_NBR_OF_AXES] = {0};
 
+//	DEBUG_PRINT("\ncalculation in sensorsCalculateVarianceAndMean\n");
   for (i = 0; i < SENSORS_NBR_OF_BIAS_SAMPLES; i++)
   {
     sum[0] += bias->buffer[i].x;
@@ -789,6 +792,7 @@ static void __attribute__((used)) sensorsCalculateBiasMean(BiasObj* bias, Axis3i
   uint32_t i;
   int32_t sum[GYRO_NBR_OF_AXES] = {0};
 
+//	DEBUG_PRINT("\ncalculation in sensorsCalculateBiasMean\n");
   for (i = 0; i < SENSORS_NBR_OF_BIAS_SAMPLES; i++)
   {
     sum[0] += bias->buffer[i].x;
@@ -878,6 +882,7 @@ bool sensorsBmi088Bmp388ManufacturingTest(void)
  */
 static void sensorsAlignToAirframe(Axis3f* in, Axis3f* out)
 {
+//	DEBUG_PRINT("\ncalculation in sensorsAlignToAirframe\n");
   // IMU alignment
   static float sphi, cphi, stheta, ctheta, spsi, cpsi;
 
@@ -910,6 +915,7 @@ static void sensorsAlignToAirframe(Axis3f* in, Axis3f* out)
  */
 static void sensorsAccAlignToGravity(Axis3f* in, Axis3f* out)
 {
+//	DEBUG_PRINT("\ncalculation in sensorsAccAlignToGravity\n");
   Axis3f rx;
   Axis3f ry;
 
