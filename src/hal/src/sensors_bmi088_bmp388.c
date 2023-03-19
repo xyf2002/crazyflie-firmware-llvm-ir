@@ -284,6 +284,24 @@ bool sensorsBmi088Bmp388AreCalibrated()
   return gyroBiasFound;
 }
 
+/*
+ * typedef union {
+   struct {
+         float x;
+         float y;
+         float z;
+   };
+   float axis[3];
+ } Axis3f;
+ * */
+
+typedef float bmx055xAcceleration;
+typedef float bmx055yAcceleration;
+typedef float bmx055zAcceleration;
+typedef float bmx055xAngularRate;
+typedef float bmx055yAngularRate;
+typedef float bmx055zAngularRate;
+
 static void sensorsTask(void *param)
 {
   systemWaitStart();
@@ -306,22 +324,47 @@ static void sensorsTask(void *param)
       sensorsGyroGet(&gyroRaw);
       sensorsAccelGet(&accelRaw);
 
+			// update value with physical type
+	    bmx055xAngularRate gyroRawX = gyroRaw.x;
+	    bmx055xAngularRate gyroRawY = gyroRaw.y;
+	    bmx055xAngularRate gyroRawZ = gyroRaw.z;
+
+	    bmx055xAcceleration accelRawX = accelRaw.x;
+	    bmx055xAcceleration accelRawY = accelRaw.y;
+	    bmx055xAcceleration accelRawZ = accelRaw.z;
+
       /* calibrate if necessary */
 #ifdef GYRO_BIAS_LIGHT_WEIGHT
-      gyroBiasFound = processGyroBiasNoBuffer(gyroRaw.x, gyroRaw.y, gyroRaw.z, &gyroBias);
+      gyroBiasFound = processGyroBiasNoBuffer(gyroRawX, gyroRawY, gyroRawZ, &gyroBias);
 #else
-      gyroBiasFound = processGyroBias(gyroRaw.x, gyroRaw.y, gyroRaw.z, &gyroBias);
+      gyroBiasFound = processGyroBias(gyroRawX, gyroRawY, gyroRawZ, &gyroBias);
 #endif
+
+	    // update value with physical type
+	    bmx055xAngularRate gyroBiasX = gyroBias.x;
+	    bmx055xAngularRate gyroBiasY = gyroBias.y;
+	    bmx055xAngularRate gyroBiasZ = gyroBias.z;
+
       if (gyroBiasFound)
       {
-         processAccScale(accelRaw.x, accelRaw.y, accelRaw.z);
+         processAccScale(accelRawX, accelRawY, accelRawZ);
       }
 
 //	    DEBUG_PRINT("\ncalculation in sensorsTask\n");
       /* Gyro */
-      gyroScaledIMU.x =  (gyroRaw.x - gyroBias.x) * SENSORS_BMI088_DEG_PER_LSB_CFG;
-      gyroScaledIMU.y =  (gyroRaw.y - gyroBias.y) * SENSORS_BMI088_DEG_PER_LSB_CFG;
-      gyroScaledIMU.z =  (gyroRaw.z - gyroBias.z) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+	    // update value with physical type
+	    bmx055xAngularRate gyroScaledIMUX = gyroScaledIMU.x;
+	    bmx055xAngularRate gyroScaledIMUY = gyroScaledIMU.y;
+	    bmx055xAngularRate gyroScaledIMUZ = gyroScaledIMU.z;
+
+	    gyroScaledIMUX =  (gyroRawX - gyroBiasX) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+	    gyroScaledIMUY =  (gyroRawY - gyroBiasY) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+	    gyroScaledIMUZ =  (gyroRawZ - gyroBiasZ) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+
+	    gyroScaledIMU.x = gyroScaledIMUX;
+	    gyroScaledIMU.y = gyroScaledIMUY;
+	    gyroScaledIMU.z = gyroScaledIMUZ;
+
       sensorsAlignToAirframe(&gyroScaledIMU, &sensorData.gyro);
       applyAxis3fLpf((lpf2pData*)(&gyroLpf), &sensorData.gyro);
 
@@ -330,9 +373,17 @@ static void sensorsTask(void *param)
       estimatorEnqueue(&measurement);
 
       /* Acelerometer */
-      accScaledIMU.x = accelRaw.x * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
-      accScaledIMU.y = accelRaw.y * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
-      accScaledIMU.z = accelRaw.z * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+	    bmx055xAcceleration accScaledIMUX = accScaledIMU.x;
+	    bmx055xAcceleration accScaledIMUY = accScaledIMU.y;
+	    bmx055xAcceleration accScaledIMUZ = accScaledIMU.z;
+
+	    accScaledIMUX = accelRawX * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+	    accScaledIMUY = accelRawY * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+	    accScaledIMUZ = accelRawZ * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+	    accScaledIMU.x = accScaledIMUX;
+	    accScaledIMU.y = accScaledIMUY;
+	    accScaledIMU.z = accScaledIMUZ;
+
       sensorsAlignToAirframe(&accScaledIMU, &accScaled);
       sensorsAccAlignToGravity(&accScaled, &sensorData.acc);
       applyAxis3fLpf((lpf2pData*)(&accLpf), &sensorData.acc);

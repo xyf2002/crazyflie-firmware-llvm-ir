@@ -1,5 +1,7 @@
 set -e
 
+make -j32
+
 stem="sensors_bmi088_bmp388"
 obj_file_name="${stem}.o"
 c_file_name="${stem}.c"
@@ -61,11 +63,11 @@ fi
 
 if [ -z "${obj_file}" ]; then
   echo "no such objective file"
-  exit 1
+else
+  echo "deleting objective file ${obj_file} ......"
+  rm "${obj_file}"
 fi
 
-echo "deleting objective file ${obj_file} ......"
-rm "${obj_file}"
 if [ -z "${c_file}" ]; then
   echo "no such c file"
   exit 1
