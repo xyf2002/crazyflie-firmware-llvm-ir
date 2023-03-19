@@ -110,8 +110,8 @@ fi
 cmd="opt ${stem}_output.ll -o ${c_file}.bc"
 echo "${cmd}"
 bash -c "${cmd}"
-cmd="clang ${flags} -o ${obj_file} -c ${c_file}.bc"
-#cmd="clang ${flags} -Os -O3 -o ${obj_file} -c ${c_file}"
+#cmd="clang ${flags} -o ${obj_file} -c ${c_file}.bc"
+cmd="clang ${flags} -O3 -o ${obj_file} -c ${c_file}.bc"
 echo "${cmd}"
 bash -c "${cmd}"
 

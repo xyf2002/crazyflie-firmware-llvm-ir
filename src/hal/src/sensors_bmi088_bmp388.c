@@ -310,9 +310,15 @@ static void sensorsTask(void *param)
   Axis3f accScaledIMU;
   Axis3f accScaled;
   measurement_t measurement;
-  /* wait an additional second the keep bus free
-   * this is only required by the z-ranger, since the
-   * configuration will be done after system start-up */
+
+	uint32_t accumulation_time = 0, start = 0, dt = 0;
+	uint32_t count_num = 0;
+	bool print_time = true;
+	bool collect_time = false;
+
+	/* wait an additional second the keep bus free
+	 * this is only required by the z-ranger, since the
+	 * configuration will be done after system start-up */
   //vTaskDelayUntil(&lastWakeTime, M2T(1500));
   while (1)
   {
@@ -332,6 +338,9 @@ static void sensorsTask(void *param)
 	    bmx055xAcceleration accelRawX = accelRaw.x;
 	    bmx055xAcceleration accelRawY = accelRaw.y;
 	    bmx055xAcceleration accelRawZ = accelRaw.z;
+
+			if (collect_time)
+				start = T2M(xTaskGetTickCount());
 
       /* calibrate if necessary */
 #ifdef GYRO_BIAS_LIGHT_WEIGHT
@@ -391,6 +400,19 @@ static void sensorsTask(void *param)
       measurement.type = MeasurementTypeAcceleration;
       measurement.data.acceleration.acc = sensorData.acc;
       estimatorEnqueue(&measurement);
+
+	    if (collect_time) {
+		    dt = T2M(xTaskGetTickCount()) - start;
+		    accumulation_time += dt;
+	    }
+	    count_num += 1;
+			if (count_num > 10000)
+				collect_time = true;
+
+	    if (count_num > 20000 && print_time) {
+		    DEBUG_PRINT("\nTime elapsed: %lu msec\n", accumulation_time);
+		    print_time = false;
+	    }
     }
 
     if (isBarometerPresent)
