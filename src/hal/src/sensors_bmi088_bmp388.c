@@ -316,7 +316,9 @@ static void sensorsTask(void *param)
 
 	uint32_t accumulation_time = 0, start = 0, dt = 0;
 	uint32_t count_num = 0;
+	uint32_t seg_num = 0;
 	bool print_time = true;
+	bool collect_time = false;
 
 	/* wait an additional second the keep bus free
 	 * this is only required by the z-ranger, since the
@@ -331,7 +333,8 @@ static void sensorsTask(void *param)
 			sensorsGyroGet(&gyroRaw);
 			sensorsAccelGet(&accelRaw);
 
-			start = T2M(xTaskGetTickCount());
+			if (collect_time)
+				start = T2M(xTaskGetTickCount());
 
 			/* calibrate if necessary */
 #ifdef GYRO_BIAS_LIGHT_WEIGHT
@@ -367,12 +370,24 @@ static void sensorsTask(void *param)
 			measurement.data.acceleration.acc = sensorData.acc;
 			estimatorEnqueue(&measurement);
 
-			dt = T2M(xTaskGetTickCount()) - start;
-	    accumulation_time += dt;
+			if (collect_time) {
+				dt = T2M(xTaskGetTickCount()) - start;
+				accumulation_time += dt;
+			}
 	    count_num += 1;
 
-	    if (count_num > 1000 && print_time) {
-		    DEBUG_PRINT("\nTime elapsed: %lu msec\n", accumulation_time);
+			if (count_num > 10000)
+				collect_time = true;
+
+			if (collect_time && print_time) {
+				uint32_t tmp = (count_num-10000)/1000;
+				if (tmp > seg_num) {
+					seg_num++;
+					DEBUG_PRINT("Time elapsed: %lu msec\n", accumulation_time);
+					accumulation_time = 0;
+				}
+			}
+	    if (count_num > 110000 && print_time) {
 		    print_time = false;
 	    }
 		}
@@ -433,13 +448,13 @@ static void sensorsTask(void *param)
 //      sensorsAccelGet(&accelRaw);
 //
 //			// update value with physical type
-//	    bmx055xAngularRate gyroRawX = gyroRaw.x;
-//	    bmx055xAngularRate gyroRawY = gyroRaw.y;
-//	    bmx055xAngularRate gyroRawZ = gyroRaw.z;
+//	    bmx055xAngularRate gyroRawX = (bmx055xAngularRate)gyroRaw.x;
+//	    bmx055yAngularRate gyroRawY = (bmx055yAngularRate)gyroRaw.y;
+//	    bmx055zAngularRate gyroRawZ = (bmx055zAngularRate)gyroRaw.z;
 //
-//	    bmx055xAcceleration accelRawX = accelRaw.x;
-//	    bmx055xAcceleration accelRawY = accelRaw.y;
-//	    bmx055xAcceleration accelRawZ = accelRaw.z;
+//	    bmx055xAcceleration accelRawX = (bmx055xAcceleration)accelRaw.x;
+//	    bmx055yAcceleration accelRawY = (bmx055yAcceleration)accelRaw.y;
+//	    bmx055zAcceleration accelRawZ = (bmx055zAcceleration)accelRaw.z;
 //
 //			start = T2M(xTaskGetTickCount());
 //
@@ -451,9 +466,9 @@ static void sensorsTask(void *param)
 //#endif
 //
 //	    // update value with physical type
-//	    bmx055xAngularRate gyroBiasX = gyroBias.x;
-//	    bmx055xAngularRate gyroBiasY = gyroBias.y;
-//	    bmx055xAngularRate gyroBiasZ = gyroBias.z;
+//	    bmx055xAngularRate gyroBiasX = (bmx055xAngularRate)gyroBias.x;
+//	    bmx055yAngularRate gyroBiasY = (bmx055yAngularRate)gyroBias.y;
+//	    bmx055zAngularRate gyroBiasZ = (bmx055zAngularRate)gyroBias.z;
 //
 //      if (gyroBiasFound)
 //      {
@@ -463,9 +478,9 @@ static void sensorsTask(void *param)
 ////	    DEBUG_PRINT("\ncalculation in sensorsTask\n");
 //      /* Gyro */
 //	    // update value with physical type
-//	    bmx055xAngularRate gyroScaledIMUX = gyroScaledIMU.x;
-//	    bmx055xAngularRate gyroScaledIMUY = gyroScaledIMU.y;
-//	    bmx055xAngularRate gyroScaledIMUZ = gyroScaledIMU.z;
+//	    bmx055xAngularRate gyroScaledIMUX = (bmx055xAngularRate)gyroScaledIMU.x;
+//	    bmx055yAngularRate gyroScaledIMUY = (bmx055yAngularRate)gyroScaledIMU.y;
+//	    bmx055zAngularRate gyroScaledIMUZ = (bmx055zAngularRate)gyroScaledIMU.z;
 //
 //	    gyroScaledIMUX =  (gyroRawX - gyroBiasX) * SENSORS_BMI088_DEG_PER_LSB_CFG;
 //	    gyroScaledIMUY =  (gyroRawY - gyroBiasY) * SENSORS_BMI088_DEG_PER_LSB_CFG;
@@ -483,9 +498,9 @@ static void sensorsTask(void *param)
 //      estimatorEnqueue(&measurement);
 //
 //      /* Acelerometer */
-//	    bmx055xAcceleration accScaledIMUX = accScaledIMU.x;
-//	    bmx055xAcceleration accScaledIMUY = accScaledIMU.y;
-//	    bmx055xAcceleration accScaledIMUZ = accScaledIMU.z;
+//	    bmx055xAcceleration accScaledIMUX = (bmx055xAcceleration)accScaledIMU.x;
+//	    bmx055yAcceleration accScaledIMUY = (bmx055yAcceleration)accScaledIMU.y;
+//	    bmx055zAcceleration accScaledIMUZ = (bmx055zAcceleration)accScaledIMU.z;
 //
 //	    accScaledIMUX = accelRawX * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
 //	    accScaledIMUY = accelRawY * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
