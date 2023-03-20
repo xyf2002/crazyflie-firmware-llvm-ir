@@ -295,12 +295,12 @@ bool sensorsBmi088Bmp388AreCalibrated()
  } Axis3f;
  * */
 
-typedef float bmx055xAcceleration;
-typedef float bmx055yAcceleration;
-typedef float bmx055zAcceleration;
-typedef float bmx055xAngularRate;
-typedef float bmx055yAngularRate;
-typedef float bmx055zAngularRate;
+typedef int64_t bmx055xAcceleration;
+typedef int64_t bmx055yAcceleration;
+typedef int64_t bmx055zAcceleration;
+typedef int64_t bmx055xAngularRate;
+typedef int64_t bmx055yAngularRate;
+typedef int64_t bmx055zAngularRate;
 
 static void sensorsTask(void *param)
 {
@@ -314,7 +314,6 @@ static void sensorsTask(void *param)
 	uint32_t accumulation_time = 0, start = 0, dt = 0;
 	uint32_t count_num = 0;
 	bool print_time = true;
-	bool collect_time = false;
 
 	/* wait an additional second the keep bus free
 	 * this is only required by the z-ranger, since the
@@ -339,8 +338,7 @@ static void sensorsTask(void *param)
 	    bmx055xAcceleration accelRawY = accelRaw.y;
 	    bmx055xAcceleration accelRawZ = accelRaw.z;
 
-			if (collect_time)
-				start = T2M(xTaskGetTickCount());
+			start = T2M(xTaskGetTickCount());
 
       /* calibrate if necessary */
 #ifdef GYRO_BIAS_LIGHT_WEIGHT
@@ -401,15 +399,11 @@ static void sensorsTask(void *param)
       measurement.data.acceleration.acc = sensorData.acc;
       estimatorEnqueue(&measurement);
 
-	    if (collect_time) {
-		    dt = T2M(xTaskGetTickCount()) - start;
-		    accumulation_time += dt;
-	    }
+	    dt = T2M(xTaskGetTickCount()) - start;
+	    accumulation_time += dt;
 	    count_num += 1;
-			if (count_num > 10000)
-				collect_time = true;
 
-	    if (count_num > 20000 && print_time) {
+	    if (count_num > 1000 && print_time) {
 		    DEBUG_PRINT("\nTime elapsed: %lu msec\n", accumulation_time);
 		    print_time = false;
 	    }
