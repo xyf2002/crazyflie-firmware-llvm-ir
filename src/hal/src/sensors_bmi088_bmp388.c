@@ -302,6 +302,8 @@ typedef int64_t bmx055xAngularRate;
 typedef int64_t bmx055yAngularRate;
 typedef int64_t bmx055zAngularRate;
 
+uint32_t accum_times[1024];
+
 /*
  * Original floating-point implementation
  * */
@@ -317,7 +319,6 @@ static void sensorsTask(void *param)
 	uint32_t accumulation_time = 0, start = 0, dt = 0;
 	uint32_t count_num = 0;
 	uint32_t seg_num = 0;
-	bool print_time = true;
 	bool collect_time = false;
 
 	/* wait an additional second the keep bus free
@@ -332,6 +333,13 @@ static void sensorsTask(void *param)
 			/* get data from chosen sensors */
 			sensorsGyroGet(&gyroRaw);
 			sensorsAccelGet(&accelRaw);
+
+			count_num++;
+			if (count_num > 500001) {
+				DEBUG_PRINT("\nstart collecting time\n");
+				collect_time = !collect_time;
+				count_num = 0;
+			}
 
 			if (collect_time)
 				start = T2M(xTaskGetTickCount());
@@ -374,21 +382,24 @@ static void sensorsTask(void *param)
 				dt = T2M(xTaskGetTickCount()) - start;
 				accumulation_time += dt;
 			}
-	    count_num += 1;
 
-			if (count_num > 10000)
-				collect_time = true;
-
-			if (collect_time && print_time) {
-				uint32_t tmp = (count_num-10000)/1000;
+			if (collect_time) {
+				uint32_t tmp = ceil(count_num/10000);
 				if (tmp > seg_num) {
+					accum_times[seg_num] = accumulation_time;
 					seg_num++;
-					DEBUG_PRINT("Time elapsed: %lu msec\n", accumulation_time);
 					accumulation_time = 0;
+//					DEBUG_PRINT("%lu msec, seg_num: %lu\n", accum_times[seg_num], seg_num);
 				}
 			}
-	    if (count_num > 110000 && print_time) {
-		    print_time = false;
+
+	    if (count_num > 500000 && collect_time) {
+		    DEBUG_PRINT("\nTime elapsed:\n");
+		    DEBUG_PRINT("total seg_num: %lu\n", seg_num);
+				for (size_t idx = 0; idx < seg_num; idx++) {
+					DEBUG_PRINT("%lu msec\n", accum_times[idx]);
+				}
+		    DEBUG_PRINT("\nTime collection finished!\n");
 	    }
 		}
 
@@ -420,6 +431,9 @@ static void sensorsTask(void *param)
 	}
 }
 
+/*
+ * optimize by CoSense
+ * */
 //static void sensorsTask(void *param)
 //{
 //  systemWaitStart();
@@ -431,7 +445,8 @@ static void sensorsTask(void *param)
 //
 //	uint32_t accumulation_time = 0, start = 0, dt = 0;
 //	uint32_t count_num = 0;
-//	bool print_time = true;
+//	uint32_t seg_num = 0;
+//	bool collect_time = false;
 //
 //	/* wait an additional second the keep bus free
 //	 * this is only required by the z-ranger, since the
@@ -456,7 +471,15 @@ static void sensorsTask(void *param)
 //	    bmx055yAcceleration accelRawY = (bmx055yAcceleration)accelRaw.y;
 //	    bmx055zAcceleration accelRawZ = (bmx055zAcceleration)accelRaw.z;
 //
-//			start = T2M(xTaskGetTickCount());
+//	    count_num++;
+//	    if (count_num > 500001) {
+//		    DEBUG_PRINT("\nstart collecting time\n");
+//		    collect_time = !collect_time;
+//		    count_num = 0;
+//	    }
+//
+//	    if (collect_time)
+//		    start = T2M(xTaskGetTickCount());
 //
 //      /* calibrate if necessary */
 //#ifdef GYRO_BIAS_LIGHT_WEIGHT
@@ -475,7 +498,6 @@ static void sensorsTask(void *param)
 //         processAccScale(accelRawX, accelRawY, accelRawZ);
 //      }
 //
-////	    DEBUG_PRINT("\ncalculation in sensorsTask\n");
 //      /* Gyro */
 //	    // update value with physical type
 //	    bmx055xAngularRate gyroScaledIMUX = (bmx055xAngularRate)gyroScaledIMU.x;
@@ -517,13 +539,28 @@ static void sensorsTask(void *param)
 //      measurement.data.acceleration.acc = sensorData.acc;
 //      estimatorEnqueue(&measurement);
 //
-//	    dt = T2M(xTaskGetTickCount()) - start;
-//	    accumulation_time += dt;
-//	    count_num += 1;
+//	    if (collect_time) {
+//		    dt = T2M(xTaskGetTickCount()) - start;
+//		    accumulation_time += dt;
+//	    }
 //
-//	    if (count_num > 1000 && print_time) {
-//		    DEBUG_PRINT("\nTime elapsed: %lu msec\n", accumulation_time);
-//		    print_time = false;
+//	    if (collect_time) {
+//		    uint32_t tmp = ceil(count_num/10000);
+//		    if (tmp > seg_num) {
+//			    accum_times[seg_num] = accumulation_time;
+//			    seg_num++;
+//			    accumulation_time = 0;
+////					DEBUG_PRINT("%lu msec, seg_num: %lu\n", accum_times[seg_num], seg_num);
+//		    }
+//	    }
+//
+//	    if (count_num > 500000 && collect_time) {
+//		    DEBUG_PRINT("\nTime elapsed:\n");
+//		    DEBUG_PRINT("total seg_num: %lu\n", seg_num);
+//		    for (size_t idx = 0; idx < seg_num; idx++) {
+//			    DEBUG_PRINT("%lu msec\n", accum_times[idx]);
+//		    }
+//		    DEBUG_PRINT("\nTime collection finished!\n");
 //	    }
 //    }
 //
