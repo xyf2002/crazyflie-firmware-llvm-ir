@@ -370,290 +370,281 @@ void  elapsed_time_stop (uint32_t  i)
 /*
  * Original floating-point implementation
  * */
+//static void sensorsTask(void *param)
+//{
+//	systemWaitStart();
+//
+//	Axis3f gyroScaledIMU;
+//	Axis3f accScaledIMU;
+//	Axis3f accScaled;
+//	measurement_t measurement;
+//
+//	uint32_t count_num = 0;
+//	bool collect_time = false;
+//
+//	/* wait an additional second the keep bus free
+//	 * this is only required by the z-ranger, since the
+//	 * configuration will be done after system start-up */
+//	//vTaskDelayUntil(&lastWakeTime, M2T(1500));
+//	while (1)
+//	{
+//		if (pdTRUE == xSemaphoreTake(sensorsDataReady, portMAX_DELAY))
+//		{
+//			sensorData.interruptTimestamp = imuIntTimestamp;
+//			/* get data from chosen sensors */
+//			sensorsGyroGet(&gyroRaw);
+//			sensorsAccelGet(&accelRaw);
+//
+//			if (count_num > 10000) {
+//				DEBUG_PRINT("\nstart collecting time\n");
+//				collect_time = true;
+//				count_num = 0;
+//				elapsed_time_init();
+//			}
+//
+//			/* calibrate if necessary */
+//#ifdef GYRO_BIAS_LIGHT_WEIGHT
+//			gyroBiasFound = processGyroBiasNoBuffer(gyroRaw.x, gyroRaw.y, gyroRaw.z, &gyroBias);
+//#else
+//			gyroBiasFound = processGyroBias(gyroRaw.x, gyroRaw.y, gyroRaw.z, &gyroBias);
+//#endif
+//			if (gyroBiasFound)
+//			{
+//				processAccScale(accelRaw.x, accelRaw.y, accelRaw.z);
+//			}
+//
+//			if (collect_time) {
+////				portDISABLE_INTERRUPTS();
+//				elapsed_time_start(count_num);
+////				uint64_t currTime = usecTimestamp();
+//			}
+//
+//			/* Gyro */
+//			gyroScaledIMU.x =  (gyroRaw.x - gyroBias.x) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+//			gyroScaledIMU.y =  (gyroRaw.y - gyroBias.y) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+//			gyroScaledIMU.z =  (gyroRaw.z - gyroBias.z) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+//
+//			/* Acelerometer */
+//			accScaledIMU.x = accelRaw.x * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+//			accScaledIMU.y = accelRaw.y * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+//			accScaledIMU.z = accelRaw.z * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+//
+//			if (collect_time) {
+//				elapsed_time_stop(count_num);
+////				portENABLE_INTERRUPTS();
+//			}
+//			count_num++;
+//
+//			sensorsAlignToAirframe(&gyroScaledIMU, &sensorData.gyro);
+//			applyAxis3fLpf((lpf2pData*)(&gyroLpf), &sensorData.gyro);
+//
+//			measurement.type = MeasurementTypeGyroscope;
+//			measurement.data.gyroscope.gyro = sensorData.gyro;
+//
+//			estimatorEnqueue(&measurement);
+//
+//			sensorsAlignToAirframe(&accScaledIMU, &accScaled);
+//			sensorsAccAlignToGravity(&accScaled, &sensorData.acc);
+//			applyAxis3fLpf((lpf2pData*)(&accLpf), &sensorData.acc);
+//
+//			measurement.type = MeasurementTypeAcceleration;
+//			measurement.data.acceleration.acc = sensorData.acc;
+//			estimatorEnqueue(&measurement);
+//
+//	    if (count_num == ELAPSED_TIME_MAX_SECTIONS && collect_time) {
+//		    DEBUG_PRINT("\nTime elapsed:\n");
+//				for (size_t idx = 0; idx < count_num; idx++) {
+//					DEBUG_PRINT("%lu micro sec\n", elapsed_time_tbl[idx].current);
+//				}
+//		    DEBUG_PRINT("\nTime collection finished!\n");
+//		    collect_time = false;
+//	    }
+//		}
+//
+//		if (isBarometerPresent)
+//		{
+//			static uint8_t baroMeasDelay = SENSORS_DELAY_BARO;
+//			if (--baroMeasDelay == 0)
+//			{
+//				uint8_t sensor_comp = BMP3_PRESS | BMP3_TEMP;
+//				struct bmp3_data data;
+//				baro_t* baro388 = &sensorData.baro;
+//				/* Temperature and Pressure data are read and stored in the bmp3_data instance */
+//				bmp3_get_sensor_data(sensor_comp, &data, &bmp388Dev);
+//				sensorsScaleBaro(baro388, data.pressure, data.temperature);
+//				measurement.type = MeasurementTypeBarometer;
+//				measurement.data.barometer.baro = sensorData.baro;
+//				estimatorEnqueue(&measurement);
+//				baroMeasDelay = baroMeasDelayMin;
+//			}
+//		}
+//		xQueueOverwrite(accelerometerDataQueue, &sensorData.acc);
+//		xQueueOverwrite(gyroDataQueue, &sensorData.gyro);
+//		if (isBarometerPresent)
+//		{
+//			xQueueOverwrite(barometerDataQueue, &sensorData.baro);
+//		}
+//
+//		xSemaphoreGive(dataReady);
+//	}
+//}
+
+/*
+ * optimize by CoSense
+ * */
 static void sensorsTask(void *param)
 {
-	systemWaitStart();
+  systemWaitStart();
 
-	Axis3f gyroScaledIMU;
-	Axis3f accScaledIMU;
-	Axis3f accScaled;
-	measurement_t measurement;
+  Axis3f gyroScaledIMU;
+  Axis3f accScaledIMU;
+  Axis3f accScaled;
+  measurement_t measurement;
 
-//	uint32_t start = 0, stop = 0, dt = 0;
 	uint32_t count_num = 0;
 	bool collect_time = false;
 
 	/* wait an additional second the keep bus free
 	 * this is only required by the z-ranger, since the
 	 * configuration will be done after system start-up */
-	//vTaskDelayUntil(&lastWakeTime, M2T(1500));
-	while (1)
-	{
-		if (pdTRUE == xSemaphoreTake(sensorsDataReady, portMAX_DELAY))
-		{
-			sensorData.interruptTimestamp = imuIntTimestamp;
-			/* get data from chosen sensors */
-			sensorsGyroGet(&gyroRaw);
-			sensorsAccelGet(&accelRaw);
+  //vTaskDelayUntil(&lastWakeTime, M2T(1500));
+  while (1)
+  {
+    if (pdTRUE == xSemaphoreTake(sensorsDataReady, portMAX_DELAY))
+    {
+      sensorData.interruptTimestamp = imuIntTimestamp;
 
-			if (count_num > 10000) {
-				DEBUG_PRINT("\nstart collecting time\n");
-				collect_time = true;
-				count_num = 0;
-				elapsed_time_init();
-			}
+      /* get data from chosen sensors */
+      sensorsGyroGet(&gyroRaw);
+      sensorsAccelGet(&accelRaw);
 
-			if (collect_time) {
-//				portDISABLE_INTERRUPTS();
-				elapsed_time_start(count_num);
-//				uint64_t currTime = usecTimestamp();
-			}
+			// update value with physical type
+	    bmx055xAngularRate gyroRawX = (bmx055xAngularRate)gyroRaw.x;
+	    bmx055yAngularRate gyroRawY = (bmx055yAngularRate)gyroRaw.y;
+	    bmx055zAngularRate gyroRawZ = (bmx055zAngularRate)gyroRaw.z;
 
-			/* calibrate if necessary */
+	    bmx055xAcceleration accelRawX = (bmx055xAcceleration)accelRaw.x;
+	    bmx055yAcceleration accelRawY = (bmx055yAcceleration)accelRaw.y;
+	    bmx055zAcceleration accelRawZ = (bmx055zAcceleration)accelRaw.z;
+
+	    if (count_num > 10000) {
+		    DEBUG_PRINT("\nstart collecting time\n");
+		    collect_time = true;
+		    count_num = 0;
+		    elapsed_time_init();
+	    }
+
+      /* calibrate if necessary */
 #ifdef GYRO_BIAS_LIGHT_WEIGHT
-			gyroBiasFound = processGyroBiasNoBuffer(gyroRaw.x, gyroRaw.y, gyroRaw.z, &gyroBias);
+      gyroBiasFound = processGyroBiasNoBuffer(gyroRawX, gyroRawY, gyroRawZ, &gyroBias);
 #else
-			gyroBiasFound = processGyroBias(gyroRaw.x, gyroRaw.y, gyroRaw.z, &gyroBias);
+      gyroBiasFound = processGyroBias(gyroRawX, gyroRawY, gyroRawZ, &gyroBias);
 #endif
-			if (gyroBiasFound)
-			{
-				processAccScale(accelRaw.x, accelRaw.y, accelRaw.z);
-			}
 
-			/* Gyro */
-			gyroScaledIMU.x =  (gyroRaw.x - gyroBias.x) * SENSORS_BMI088_DEG_PER_LSB_CFG;
-			gyroScaledIMU.y =  (gyroRaw.y - gyroBias.y) * SENSORS_BMI088_DEG_PER_LSB_CFG;
-			gyroScaledIMU.z =  (gyroRaw.z - gyroBias.z) * SENSORS_BMI088_DEG_PER_LSB_CFG;
-			sensorsAlignToAirframe(&gyroScaledIMU, &sensorData.gyro);
-			applyAxis3fLpf((lpf2pData*)(&gyroLpf), &sensorData.gyro);
+	    // update value with physical type
+	    bmx055xAngularRate gyroBiasX = (bmx055xAngularRate)gyroBias.x;
+	    bmx055yAngularRate gyroBiasY = (bmx055yAngularRate)gyroBias.y;
+	    bmx055zAngularRate gyroBiasZ = (bmx055zAngularRate)gyroBias.z;
 
-			measurement.type = MeasurementTypeGyroscope;
-			measurement.data.gyroscope.gyro = sensorData.gyro;
+      if (gyroBiasFound)
+      {
+         processAccScale(accelRawX, accelRawY, accelRawZ);
+      }
 
-			/* Acelerometer */
-			accScaledIMU.x = accelRaw.x * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
-			accScaledIMU.y = accelRaw.y * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
-			accScaledIMU.z = accelRaw.z * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+      /* Gyro */
+	    // update value with physical type
+	    bmx055xAngularRate gyroScaledIMUX = (bmx055xAngularRate)gyroScaledIMU.x;
+	    bmx055yAngularRate gyroScaledIMUY = (bmx055yAngularRate)gyroScaledIMU.y;
+	    bmx055zAngularRate gyroScaledIMUZ = (bmx055zAngularRate)gyroScaledIMU.z;
 
-			if (collect_time) {
-				elapsed_time_stop(count_num);
+	    if (collect_time) {
+//				portDISABLE_INTERRUPTS();
+		    elapsed_time_start(count_num);
+//				uint64_t currTime = usecTimestamp();
+	    }
+
+	    gyroScaledIMUX =  (gyroRawX - gyroBiasX) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+	    gyroScaledIMUY =  (gyroRawY - gyroBiasY) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+	    gyroScaledIMUZ =  (gyroRawZ - gyroBiasZ) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+
+	    gyroScaledIMU.x = gyroScaledIMUX;
+	    gyroScaledIMU.y = gyroScaledIMUY;
+	    gyroScaledIMU.z = gyroScaledIMUZ;
+
+      /* Acelerometer */
+	    bmx055xAcceleration accScaledIMUX = (bmx055xAcceleration)accScaledIMU.x;
+	    bmx055yAcceleration accScaledIMUY = (bmx055yAcceleration)accScaledIMU.y;
+	    bmx055zAcceleration accScaledIMUZ = (bmx055zAcceleration)accScaledIMU.z;
+
+	    accScaledIMUX = accelRawX * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+	    accScaledIMUY = accelRawY * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+	    accScaledIMUZ = accelRawZ * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+
+	    if (collect_time) {
+		    elapsed_time_stop(count_num);
 //				portENABLE_INTERRUPTS();
-			}
-			count_num++;
+	    }
+	    count_num++;
 
-			estimatorEnqueue(&measurement);
+	    sensorsAlignToAirframe(&gyroScaledIMU, &sensorData.gyro);
+	    applyAxis3fLpf((lpf2pData*)(&gyroLpf), &sensorData.gyro);
 
-			sensorsAlignToAirframe(&accScaledIMU, &accScaled);
-			sensorsAccAlignToGravity(&accScaled, &sensorData.acc);
-			applyAxis3fLpf((lpf2pData*)(&accLpf), &sensorData.acc);
+	    measurement.type = MeasurementTypeGyroscope;
+	    measurement.data.gyroscope.gyro = sensorData.gyro;
 
-			measurement.type = MeasurementTypeAcceleration;
-			measurement.data.acceleration.acc = sensorData.acc;
-			estimatorEnqueue(&measurement);
+	    estimatorEnqueue(&measurement);
+
+	    accScaledIMU.x = accScaledIMUX;
+	    accScaledIMU.y = accScaledIMUY;
+	    accScaledIMU.z = accScaledIMUZ;
+
+      sensorsAlignToAirframe(&accScaledIMU, &accScaled);
+      sensorsAccAlignToGravity(&accScaled, &sensorData.acc);
+      applyAxis3fLpf((lpf2pData*)(&accLpf), &sensorData.acc);
+
+      measurement.type = MeasurementTypeAcceleration;
+      measurement.data.acceleration.acc = sensorData.acc;
+      estimatorEnqueue(&measurement);
 
 	    if (count_num == ELAPSED_TIME_MAX_SECTIONS && collect_time) {
 		    DEBUG_PRINT("\nTime elapsed:\n");
-				for (size_t idx = 0; idx < count_num; idx++) {
-					DEBUG_PRINT("%lu micro sec\n", elapsed_time_tbl[idx].current);
-				}
+		    for (size_t idx = 0; idx < count_num; idx++) {
+			    DEBUG_PRINT("%lu micro sec\n", elapsed_time_tbl[idx].current);
+		    }
 		    DEBUG_PRINT("\nTime collection finished!\n");
 		    collect_time = false;
 	    }
-		}
+    }
 
-		if (isBarometerPresent)
-		{
-			static uint8_t baroMeasDelay = SENSORS_DELAY_BARO;
-			if (--baroMeasDelay == 0)
-			{
-				uint8_t sensor_comp = BMP3_PRESS | BMP3_TEMP;
-				struct bmp3_data data;
-				baro_t* baro388 = &sensorData.baro;
-				/* Temperature and Pressure data are read and stored in the bmp3_data instance */
-				bmp3_get_sensor_data(sensor_comp, &data, &bmp388Dev);
-				sensorsScaleBaro(baro388, data.pressure, data.temperature);
-				measurement.type = MeasurementTypeBarometer;
-				measurement.data.barometer.baro = sensorData.baro;
-				estimatorEnqueue(&measurement);
-				baroMeasDelay = baroMeasDelayMin;
-			}
-		}
-		xQueueOverwrite(accelerometerDataQueue, &sensorData.acc);
-		xQueueOverwrite(gyroDataQueue, &sensorData.gyro);
-		if (isBarometerPresent)
-		{
-			xQueueOverwrite(barometerDataQueue, &sensorData.baro);
-		}
+    if (isBarometerPresent)
+    {
+      static uint8_t baroMeasDelay = SENSORS_DELAY_BARO;
+      if (--baroMeasDelay == 0)
+      {
+        uint8_t sensor_comp = BMP3_PRESS | BMP3_TEMP;
+        struct bmp3_data data;
+        baro_t* baro388 = &sensorData.baro;
+        /* Temperature and Pressure data are read and stored in the bmp3_data instance */
+        bmp3_get_sensor_data(sensor_comp, &data, &bmp388Dev);
+        sensorsScaleBaro(baro388, data.pressure, data.temperature);
 
-		xSemaphoreGive(dataReady);
-	}
+        measurement.type = MeasurementTypeBarometer;
+        measurement.data.barometer.baro = sensorData.baro;
+        estimatorEnqueue(&measurement);
+
+        baroMeasDelay = baroMeasDelayMin;
+      }
+    }
+    xQueueOverwrite(accelerometerDataQueue, &sensorData.acc);
+    xQueueOverwrite(gyroDataQueue, &sensorData.gyro);
+    if (isBarometerPresent)
+    {
+      xQueueOverwrite(barometerDataQueue, &sensorData.baro);
+    }
+
+    xSemaphoreGive(dataReady);
+  }
 }
-
-/*
- * optimize by CoSense
- * */
-//static void sensorsTask(void *param)
-//{
-//  systemWaitStart();
-//
-//  Axis3f gyroScaledIMU;
-//  Axis3f accScaledIMU;
-//  Axis3f accScaled;
-//  measurement_t measurement;
-//
-//	uint32_t accumulation_time = 0, start = 0, dt = 0;
-//	uint32_t count_num = 0;
-//	uint32_t seg_num = 0;
-//	bool collect_time = true;
-//
-//	/* wait an additional second the keep bus free
-//	 * this is only required by the z-ranger, since the
-//	 * configuration will be done after system start-up */
-//  //vTaskDelayUntil(&lastWakeTime, M2T(1500));
-//  while (1)
-//  {
-//    if (pdTRUE == xSemaphoreTake(sensorsDataReady, portMAX_DELAY))
-//    {
-//      sensorData.interruptTimestamp = imuIntTimestamp;
-//
-//      /* get data from chosen sensors */
-//      sensorsGyroGet(&gyroRaw);
-//      sensorsAccelGet(&accelRaw);
-//
-//			// update value with physical type
-//	    bmx055xAngularRate gyroRawX = (bmx055xAngularRate)gyroRaw.x;
-//	    bmx055yAngularRate gyroRawY = (bmx055yAngularRate)gyroRaw.y;
-//	    bmx055zAngularRate gyroRawZ = (bmx055zAngularRate)gyroRaw.z;
-//
-//	    bmx055xAcceleration accelRawX = (bmx055xAcceleration)accelRaw.x;
-//	    bmx055yAcceleration accelRawY = (bmx055yAcceleration)accelRaw.y;
-//	    bmx055zAcceleration accelRawZ = (bmx055zAcceleration)accelRaw.z;
-//
-//	    count_num++;
-////	    if (count_num > 500001) {
-////		    DEBUG_PRINT("\nstart collecting time\n");
-////		    collect_time = !collect_time;
-////		    count_num = 0;
-////	    }
-//
-//	    if (collect_time)
-//		    start = T2M(xTaskGetTickCount());
-//
-//      /* calibrate if necessary */
-//#ifdef GYRO_BIAS_LIGHT_WEIGHT
-//      gyroBiasFound = processGyroBiasNoBuffer(gyroRawX, gyroRawY, gyroRawZ, &gyroBias);
-//#else
-//      gyroBiasFound = processGyroBias(gyroRawX, gyroRawY, gyroRawZ, &gyroBias);
-//#endif
-//
-//	    // update value with physical type
-//	    bmx055xAngularRate gyroBiasX = (bmx055xAngularRate)gyroBias.x;
-//	    bmx055yAngularRate gyroBiasY = (bmx055yAngularRate)gyroBias.y;
-//	    bmx055zAngularRate gyroBiasZ = (bmx055zAngularRate)gyroBias.z;
-//
-//      if (gyroBiasFound)
-//      {
-//         processAccScale(accelRawX, accelRawY, accelRawZ);
-//      }
-//
-//      /* Gyro */
-//	    // update value with physical type
-//	    bmx055xAngularRate gyroScaledIMUX = (bmx055xAngularRate)gyroScaledIMU.x;
-//	    bmx055yAngularRate gyroScaledIMUY = (bmx055yAngularRate)gyroScaledIMU.y;
-//	    bmx055zAngularRate gyroScaledIMUZ = (bmx055zAngularRate)gyroScaledIMU.z;
-//
-//	    gyroScaledIMUX =  (gyroRawX - gyroBiasX) * SENSORS_BMI088_DEG_PER_LSB_CFG;
-//	    gyroScaledIMUY =  (gyroRawY - gyroBiasY) * SENSORS_BMI088_DEG_PER_LSB_CFG;
-//	    gyroScaledIMUZ =  (gyroRawZ - gyroBiasZ) * SENSORS_BMI088_DEG_PER_LSB_CFG;
-//
-//	    gyroScaledIMU.x = gyroScaledIMUX;
-//	    gyroScaledIMU.y = gyroScaledIMUY;
-//	    gyroScaledIMU.z = gyroScaledIMUZ;
-//
-//      sensorsAlignToAirframe(&gyroScaledIMU, &sensorData.gyro);
-//      applyAxis3fLpf((lpf2pData*)(&gyroLpf), &sensorData.gyro);
-//
-//      measurement.type = MeasurementTypeGyroscope;
-//      measurement.data.gyroscope.gyro = sensorData.gyro;
-//
-//      /* Acelerometer */
-//	    bmx055xAcceleration accScaledIMUX = (bmx055xAcceleration)accScaledIMU.x;
-//	    bmx055yAcceleration accScaledIMUY = (bmx055yAcceleration)accScaledIMU.y;
-//	    bmx055zAcceleration accScaledIMUZ = (bmx055zAcceleration)accScaledIMU.z;
-//
-//	    accScaledIMUX = accelRawX * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
-//	    accScaledIMUY = accelRawY * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
-//	    accScaledIMUZ = accelRawZ * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
-//
-//	    if (collect_time) {
-//		    dt = T2M(xTaskGetTickCount()) - start;
-//		    accumulation_time += dt;
-//	    }
-//
-//	    estimatorEnqueue(&measurement);
-//
-//	    accScaledIMU.x = accScaledIMUX;
-//	    accScaledIMU.y = accScaledIMUY;
-//	    accScaledIMU.z = accScaledIMUZ;
-//
-//      sensorsAlignToAirframe(&accScaledIMU, &accScaled);
-//      sensorsAccAlignToGravity(&accScaled, &sensorData.acc);
-//      applyAxis3fLpf((lpf2pData*)(&accLpf), &sensorData.acc);
-//
-//      measurement.type = MeasurementTypeAcceleration;
-//      measurement.data.acceleration.acc = sensorData.acc;
-//      estimatorEnqueue(&measurement);
-//
-//	    if (collect_time) {
-//		    uint32_t tmp = ceil(count_num/10000);
-//		    if (tmp > seg_num) {
-//			    accum_times[seg_num] = accumulation_time;
-//			    seg_num++;
-//			    accumulation_time = 0;
-////					DEBUG_PRINT("%lu msec, seg_num: %lu\n", accum_times[seg_num], seg_num);
-//		    }
-//	    }
-//
-//	    if (count_num > 200000 && collect_time) {
-//		    DEBUG_PRINT("\nTime elapsed:\n");
-//		    DEBUG_PRINT("total seg_num: %lu\n", seg_num);
-//		    for (size_t idx = 0; idx < seg_num; idx++) {
-//			    DEBUG_PRINT("%lu msec\n", accum_times[idx]);
-//		    }
-//		    DEBUG_PRINT("\nTime collection finished!\n");
-//		    collect_time = false;
-//	    }
-//    }
-//
-//    if (isBarometerPresent)
-//    {
-//      static uint8_t baroMeasDelay = SENSORS_DELAY_BARO;
-//      if (--baroMeasDelay == 0)
-//      {
-//        uint8_t sensor_comp = BMP3_PRESS | BMP3_TEMP;
-//        struct bmp3_data data;
-//        baro_t* baro388 = &sensorData.baro;
-//        /* Temperature and Pressure data are read and stored in the bmp3_data instance */
-//        bmp3_get_sensor_data(sensor_comp, &data, &bmp388Dev);
-//        sensorsScaleBaro(baro388, data.pressure, data.temperature);
-//
-//        measurement.type = MeasurementTypeBarometer;
-//        measurement.data.barometer.baro = sensorData.baro;
-//        estimatorEnqueue(&measurement);
-//
-//        baroMeasDelay = baroMeasDelayMin;
-//      }
-//    }
-//    xQueueOverwrite(accelerometerDataQueue, &sensorData.acc);
-//    xQueueOverwrite(gyroDataQueue, &sensorData.gyro);
-//    if (isBarometerPresent)
-//    {
-//      xQueueOverwrite(barometerDataQueue, &sensorData.baro);
-//    }
-//
-//    xSemaphoreGive(dataReady);
-//  }
-//}
 
 void sensorsBmi088Bmp388WaitDataReady(void)
 {
