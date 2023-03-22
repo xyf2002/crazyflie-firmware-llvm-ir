@@ -319,7 +319,7 @@ static void sensorsTask(void *param)
 	uint32_t accumulation_time = 0, start = 0, dt = 0;
 	uint32_t count_num = 0;
 	uint32_t seg_num = 0;
-	bool collect_time = false;
+	bool collect_time = true;
 
 	/* wait an additional second the keep bus free
 	 * this is only required by the z-ranger, since the
@@ -335,11 +335,11 @@ static void sensorsTask(void *param)
 			sensorsAccelGet(&accelRaw);
 
 			count_num++;
-			if (count_num > 500001) {
-				DEBUG_PRINT("\nstart collecting time\n");
-				collect_time = !collect_time;
-				count_num = 0;
-			}
+//			if (count_num > 500001) {
+//				DEBUG_PRINT("\nstart collecting time\n");
+//				collect_time = !collect_time;
+//				count_num = 0;
+//			}
 
 			if (collect_time)
 				start = T2M(xTaskGetTickCount());
@@ -364,12 +364,19 @@ static void sensorsTask(void *param)
 
 			measurement.type = MeasurementTypeGyroscope;
 			measurement.data.gyroscope.gyro = sensorData.gyro;
-			estimatorEnqueue(&measurement);
 
 			/* Acelerometer */
 			accScaledIMU.x = accelRaw.x * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
 			accScaledIMU.y = accelRaw.y * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
 			accScaledIMU.z = accelRaw.z * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+
+			if (collect_time) {
+				dt = T2M(xTaskGetTickCount()) - start;
+				accumulation_time += dt;
+			}
+
+			estimatorEnqueue(&measurement);
+
 			sensorsAlignToAirframe(&accScaledIMU, &accScaled);
 			sensorsAccAlignToGravity(&accScaled, &sensorData.acc);
 			applyAxis3fLpf((lpf2pData*)(&accLpf), &sensorData.acc);
@@ -377,11 +384,6 @@ static void sensorsTask(void *param)
 			measurement.type = MeasurementTypeAcceleration;
 			measurement.data.acceleration.acc = sensorData.acc;
 			estimatorEnqueue(&measurement);
-
-			if (collect_time) {
-				dt = T2M(xTaskGetTickCount()) - start;
-				accumulation_time += dt;
-			}
 
 			if (collect_time) {
 				uint32_t tmp = ceil(count_num/10000);
@@ -393,13 +395,14 @@ static void sensorsTask(void *param)
 				}
 			}
 
-	    if (count_num > 500000 && collect_time) {
+	    if (count_num > 200000 && collect_time) {
 		    DEBUG_PRINT("\nTime elapsed:\n");
 		    DEBUG_PRINT("total seg_num: %lu\n", seg_num);
 				for (size_t idx = 0; idx < seg_num; idx++) {
 					DEBUG_PRINT("%lu msec\n", accum_times[idx]);
 				}
 		    DEBUG_PRINT("\nTime collection finished!\n");
+		    collect_time = false;
 	    }
 		}
 
@@ -446,7 +449,7 @@ static void sensorsTask(void *param)
 //	uint32_t accumulation_time = 0, start = 0, dt = 0;
 //	uint32_t count_num = 0;
 //	uint32_t seg_num = 0;
-//	bool collect_time = false;
+//	bool collect_time = true;
 //
 //	/* wait an additional second the keep bus free
 //	 * this is only required by the z-ranger, since the
@@ -472,11 +475,11 @@ static void sensorsTask(void *param)
 //	    bmx055zAcceleration accelRawZ = (bmx055zAcceleration)accelRaw.z;
 //
 //	    count_num++;
-//	    if (count_num > 500001) {
-//		    DEBUG_PRINT("\nstart collecting time\n");
-//		    collect_time = !collect_time;
-//		    count_num = 0;
-//	    }
+////	    if (count_num > 500001) {
+////		    DEBUG_PRINT("\nstart collecting time\n");
+////		    collect_time = !collect_time;
+////		    count_num = 0;
+////	    }
 //
 //	    if (collect_time)
 //		    start = T2M(xTaskGetTickCount());
@@ -517,7 +520,6 @@ static void sensorsTask(void *param)
 //
 //      measurement.type = MeasurementTypeGyroscope;
 //      measurement.data.gyroscope.gyro = sensorData.gyro;
-//      estimatorEnqueue(&measurement);
 //
 //      /* Acelerometer */
 //	    bmx055xAcceleration accScaledIMUX = (bmx055xAcceleration)accScaledIMU.x;
@@ -527,6 +529,14 @@ static void sensorsTask(void *param)
 //	    accScaledIMUX = accelRawX * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
 //	    accScaledIMUY = accelRawY * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
 //	    accScaledIMUZ = accelRawZ * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+//
+//	    if (collect_time) {
+//		    dt = T2M(xTaskGetTickCount()) - start;
+//		    accumulation_time += dt;
+//	    }
+//
+//	    estimatorEnqueue(&measurement);
+//
 //	    accScaledIMU.x = accScaledIMUX;
 //	    accScaledIMU.y = accScaledIMUY;
 //	    accScaledIMU.z = accScaledIMUZ;
@@ -540,11 +550,6 @@ static void sensorsTask(void *param)
 //      estimatorEnqueue(&measurement);
 //
 //	    if (collect_time) {
-//		    dt = T2M(xTaskGetTickCount()) - start;
-//		    accumulation_time += dt;
-//	    }
-//
-//	    if (collect_time) {
 //		    uint32_t tmp = ceil(count_num/10000);
 //		    if (tmp > seg_num) {
 //			    accum_times[seg_num] = accumulation_time;
@@ -554,13 +559,14 @@ static void sensorsTask(void *param)
 //		    }
 //	    }
 //
-//	    if (count_num > 500000 && collect_time) {
+//	    if (count_num > 200000 && collect_time) {
 //		    DEBUG_PRINT("\nTime elapsed:\n");
 //		    DEBUG_PRINT("total seg_num: %lu\n", seg_num);
 //		    for (size_t idx = 0; idx < seg_num; idx++) {
 //			    DEBUG_PRINT("%lu msec\n", accum_times[idx]);
 //		    }
 //		    DEBUG_PRINT("\nTime collection finished!\n");
+//		    collect_time = false;
 //	    }
 //    }
 //
