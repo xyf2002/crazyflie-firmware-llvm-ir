@@ -302,7 +302,70 @@ typedef int64_t bmx055xAngularRate;
 typedef int64_t bmx055yAngularRate;
 typedef int64_t bmx055zAngularRate;
 
-uint32_t accum_times[1024];
+#define  ELAPSED_TIME_MAX_SECTIONS  15
+
+uint32_t accum_times[ELAPSED_TIME_MAX_SECTIONS];
+
+#define  ARM_CM_DEMCR      (*(uint32_t *)0xE000EDFC)
+#define  ARM_CM_DWT_CTRL   (*(uint32_t *)0xE0001000)
+#define  ARM_CM_DWT_CYCCNT (*(uint32_t *)0xE0001004)
+
+typedef  struct  elapsed_time {
+	uint32_t  start;
+	uint32_t  current;
+	uint32_t  max;
+	uint32_t  min;
+} ELAPSED_TIME;
+
+static  ELAPSED_TIME  elapsed_time_tbl[ELAPSED_TIME_MAX_SECTIONS];
+
+void  elapsed_time_clr (uint32_t  i)
+{
+	ELAPSED_TIME  *p_tbl;
+
+
+	p_tbl          = &elapsed_time_tbl[i];
+	p_tbl->start   = 0;
+	p_tbl->current = 0;
+	p_tbl->min     = 0xFFFFFFFF;
+	p_tbl->max     = 0;
+}
+
+void  elapsed_time_init (void)
+{
+	uint32_t  i;
+
+
+	if (ARM_CM_DWT_CTRL != 0) {                  // See if DWT is available
+		ARM_CM_DEMCR      |= 1 << 24;            // Set bit 24
+		ARM_CM_DWT_CYCCNT  = 0;
+		ARM_CM_DWT_CTRL   |= 1 << 0;             // Set bit 0
+	}
+	for (i = 0; i < ELAPSED_TIME_MAX_SECTIONS; i++) {
+		elapsed_time_clr(i);
+	}
+}
+
+void  elapsed_time_start (uint32_t  i)
+{
+	elapsed_time_tbl[i].start = ARM_CM_DWT_CYCCNT;
+}
+
+void  elapsed_time_stop (uint32_t  i)
+{
+	uint32_t       stop;
+	ELAPSED_TIME  *p_tbl;
+
+	stop           = ARM_CM_DWT_CYCCNT;
+	p_tbl          = &elapsed_time_tbl[i];
+	p_tbl->current = stop - p_tbl->start;
+	if (p_tbl->max < p_tbl->current) {
+		p_tbl->max = p_tbl->current;
+	}
+	if (p_tbl->min > p_tbl->current) {
+		p_tbl->min = p_tbl->current;
+	}
+}
 
 /*
  * Original floating-point implementation
@@ -316,10 +379,9 @@ static void sensorsTask(void *param)
 	Axis3f accScaled;
 	measurement_t measurement;
 
-	uint32_t accumulation_time = 0, start = 0, dt = 0;
+//	uint32_t start = 0, stop = 0, dt = 0;
 	uint32_t count_num = 0;
-	uint32_t seg_num = 0;
-	bool collect_time = true;
+	bool collect_time = false;
 
 	/* wait an additional second the keep bus free
 	 * this is only required by the z-ranger, since the
@@ -334,15 +396,18 @@ static void sensorsTask(void *param)
 			sensorsGyroGet(&gyroRaw);
 			sensorsAccelGet(&accelRaw);
 
-			count_num++;
-//			if (count_num > 500001) {
-//				DEBUG_PRINT("\nstart collecting time\n");
-//				collect_time = !collect_time;
-//				count_num = 0;
-//			}
+			if (count_num > 10000) {
+				DEBUG_PRINT("\nstart collecting time\n");
+				collect_time = true;
+				count_num = 0;
+				elapsed_time_init();
+			}
 
-			if (collect_time)
-				start = T2M(xTaskGetTickCount());
+			if (collect_time) {
+//				portDISABLE_INTERRUPTS();
+				elapsed_time_start(count_num);
+//				uint64_t currTime = usecTimestamp();
+			}
 
 			/* calibrate if necessary */
 #ifdef GYRO_BIAS_LIGHT_WEIGHT
@@ -371,9 +436,10 @@ static void sensorsTask(void *param)
 			accScaledIMU.z = accelRaw.z * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
 
 			if (collect_time) {
-				dt = T2M(xTaskGetTickCount()) - start;
-				accumulation_time += dt;
+				elapsed_time_stop(count_num);
+//				portENABLE_INTERRUPTS();
 			}
+			count_num++;
 
 			estimatorEnqueue(&measurement);
 
@@ -385,21 +451,10 @@ static void sensorsTask(void *param)
 			measurement.data.acceleration.acc = sensorData.acc;
 			estimatorEnqueue(&measurement);
 
-			if (collect_time) {
-				uint32_t tmp = ceil(count_num/10000);
-				if (tmp > seg_num) {
-					accum_times[seg_num] = accumulation_time;
-					seg_num++;
-					accumulation_time = 0;
-//					DEBUG_PRINT("%lu msec, seg_num: %lu\n", accum_times[seg_num], seg_num);
-				}
-			}
-
-	    if (count_num > 200000 && collect_time) {
+	    if (count_num == ELAPSED_TIME_MAX_SECTIONS && collect_time) {
 		    DEBUG_PRINT("\nTime elapsed:\n");
-		    DEBUG_PRINT("total seg_num: %lu\n", seg_num);
-				for (size_t idx = 0; idx < seg_num; idx++) {
-					DEBUG_PRINT("%lu msec\n", accum_times[idx]);
+				for (size_t idx = 0; idx < count_num; idx++) {
+					DEBUG_PRINT("%lu micro sec\n", elapsed_time_tbl[idx].current);
 				}
 		    DEBUG_PRINT("\nTime collection finished!\n");
 		    collect_time = false;
