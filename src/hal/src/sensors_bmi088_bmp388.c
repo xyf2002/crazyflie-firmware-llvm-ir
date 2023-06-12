@@ -402,12 +402,6 @@ void  elapsed_time_stop (uint32_t  i)
 //				elapsed_time_init();
 //			}
 //
-//			if (collect_time) {
-////				portDISABLE_INTERRUPTS();
-//				elapsed_time_start(count_num);
-////				uint64_t currTime = usecTimestamp();
-//			}
-//
 //			/* calibrate if necessary */
 //#ifdef GYRO_BIAS_LIGHT_WEIGHT
 //			gyroBiasFound = processGyroBiasNoBuffer(gyroRaw.x, gyroRaw.y, gyroRaw.z, &gyroBias);
@@ -419,11 +413,11 @@ void  elapsed_time_stop (uint32_t  i)
 //				processAccScale(accelRaw.x, accelRaw.y, accelRaw.z);
 //			}
 //
-////			if (collect_time) {
-//////				portDISABLE_INTERRUPTS();
-////				elapsed_time_start(count_num);
-//////				uint64_t currTime = usecTimestamp();
-////			}
+//			if (collect_time) {
+////				portDISABLE_INTERRUPTS();
+//				elapsed_time_start(count_num);
+////				uint64_t currTime = usecTimestamp();
+//			}
 //
 //			/* Gyro */
 //			gyroScaledIMU.x =  (gyroRaw.x - gyroBias.x) * SENSORS_BMI088_DEG_PER_LSB_CFG;
@@ -435,17 +429,17 @@ void  elapsed_time_stop (uint32_t  i)
 //			accScaledIMU.y = accelRaw.y * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
 //			accScaledIMU.z = accelRaw.z * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
 //
-//			sensorsAlignToAirframe(&gyroScaledIMU, &sensorData.gyro);
-//			applyAxis3fLpf((lpf2pData*)(&gyroLpf), &sensorData.gyro);
-//
-//			measurement.type = MeasurementTypeGyroscope;
-//			measurement.data.gyroscope.gyro = sensorData.gyro;
-//
 //			if (collect_time) {
 //				elapsed_time_stop(count_num);
 ////				portENABLE_INTERRUPTS();
 //			}
 //			count_num++;
+//
+//			sensorsAlignToAirframe(&gyroScaledIMU, &sensorData.gyro);
+//			applyAxis3fLpf((lpf2pData*)(&gyroLpf), &sensorData.gyro);
+//
+//			measurement.type = MeasurementTypeGyroscope;
+//			measurement.data.gyroscope.gyro = sensorData.gyro;
 //
 //			estimatorEnqueue(&measurement);
 //
@@ -460,7 +454,7 @@ void  elapsed_time_stop (uint32_t  i)
 //	    if (count_num == ELAPSED_TIME_MAX_SECTIONS && collect_time) {
 //		    DEBUG_PRINT("\nTime elapsed:\n");
 //				for (size_t idx = 0; idx < count_num; idx++) {
-//					DEBUG_PRINT("%lu micro sec\n", elapsed_time_tbl[idx].current);
+//					DEBUG_PRINT("%lu counts\n", elapsed_time_tbl[idx].current);
 //				}
 //		    DEBUG_PRINT("\nTime collection finished!\n");
 //		    collect_time = false;
@@ -540,12 +534,6 @@ static void sensorsTask(void *param)
 		    elapsed_time_init();
 	    }
 
-	    if (collect_time) {
-//				portDISABLE_INTERRUPTS();
-		    elapsed_time_start(count_num);
-//				uint64_t currTime = usecTimestamp();
-	    }
-
       /* calibrate if necessary */
 #ifdef GYRO_BIAS_LIGHT_WEIGHT
       gyroBiasFound = processGyroBiasNoBuffer(gyroRawX, gyroRawY, gyroRawZ, &gyroBias);
@@ -565,38 +553,44 @@ static void sensorsTask(void *param)
 
       /* Gyro */
 	    // update value with physical type
-//	    bmx055xAngularRate gyroScaledIMUX = (bmx055xAngularRate)gyroScaledIMU.x;
-//	    bmx055yAngularRate gyroScaledIMUY = (bmx055yAngularRate)gyroScaledIMU.y;
-//	    bmx055zAngularRate gyroScaledIMUZ = (bmx055zAngularRate)gyroScaledIMU.z;
-//
-//	    gyroScaledIMUX =  (gyroRawX - gyroBiasX) * SENSORS_BMI088_DEG_PER_LSB_CFG;
-//	    gyroScaledIMUY =  (gyroRawY - gyroBiasY) * SENSORS_BMI088_DEG_PER_LSB_CFG;
-//	    gyroScaledIMUZ =  (gyroRawZ - gyroBiasZ) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+	    bmx055xAngularRate gyroScaledIMUX = (bmx055xAngularRate)gyroScaledIMU.x;
+	    bmx055yAngularRate gyroScaledIMUY = (bmx055yAngularRate)gyroScaledIMU.y;
+	    bmx055zAngularRate gyroScaledIMUZ = (bmx055zAngularRate)gyroScaledIMU.z;
 
-	    gyroScaledIMU.x = (gyroRawX - gyroBiasX) * SENSORS_BMI088_DEG_PER_LSB_CFG;
-	    gyroScaledIMU.y = (gyroRawY - gyroBiasY) * SENSORS_BMI088_DEG_PER_LSB_CFG;
-	    gyroScaledIMU.z = (gyroRawZ - gyroBiasZ) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+	    if (collect_time) {
+//				portDISABLE_INTERRUPTS();
+		    elapsed_time_start(count_num);
+//				uint64_t currTime = usecTimestamp();
+	    }
+
+	    gyroScaledIMUX =  (gyroRawX - gyroBiasX) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+	    gyroScaledIMUY =  (gyroRawY - gyroBiasY) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+	    gyroScaledIMUZ =  (gyroRawZ - gyroBiasZ) * SENSORS_BMI088_DEG_PER_LSB_CFG;
+
+	    gyroScaledIMU.x = gyroScaledIMUX;
+	    gyroScaledIMU.y = gyroScaledIMUY;
+	    gyroScaledIMU.z = gyroScaledIMUZ;
 
       /* Acelerometer */
-//	    bmx055xAcceleration accScaledIMUX = (bmx055xAcceleration)accScaledIMU.x;
-//	    bmx055yAcceleration accScaledIMUY = (bmx055yAcceleration)accScaledIMU.y;
-//	    bmx055zAcceleration accScaledIMUZ = (bmx055zAcceleration)accScaledIMU.z;
+	    bmx055xAcceleration accScaledIMUX = (bmx055xAcceleration)accScaledIMU.x;
+	    bmx055yAcceleration accScaledIMUY = (bmx055yAcceleration)accScaledIMU.y;
+	    bmx055zAcceleration accScaledIMUZ = (bmx055zAcceleration)accScaledIMU.z;
 
-	    bmx055xAcceleration accScaledIMUX = accelRawX * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
-	    bmx055yAcceleration accScaledIMUY = accelRawY * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
-	    bmx055zAcceleration accScaledIMUZ = accelRawZ * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
-
-	    sensorsAlignToAirframe(&gyroScaledIMU, &sensorData.gyro);
-	    applyAxis3fLpf((lpf2pData*)(&gyroLpf), &sensorData.gyro);
-
-	    measurement.type = MeasurementTypeGyroscope;
-	    measurement.data.gyroscope.gyro = sensorData.gyro;
+	    accScaledIMUX = accelRawX * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+	    accScaledIMUY = accelRawY * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
+	    accScaledIMUZ = accelRawZ * SENSORS_BMI088_G_PER_LSB_CFG / accScale;
 
 	    if (collect_time) {
 		    elapsed_time_stop(count_num);
 //				portENABLE_INTERRUPTS();
 	    }
 	    count_num++;
+
+	    sensorsAlignToAirframe(&gyroScaledIMU, &sensorData.gyro);
+	    applyAxis3fLpf((lpf2pData*)(&gyroLpf), &sensorData.gyro);
+
+	    measurement.type = MeasurementTypeGyroscope;
+	    measurement.data.gyroscope.gyro = sensorData.gyro;
 
 	    estimatorEnqueue(&measurement);
 
@@ -615,7 +609,7 @@ static void sensorsTask(void *param)
 	    if (count_num == ELAPSED_TIME_MAX_SECTIONS && collect_time) {
 		    DEBUG_PRINT("\nTime elapsed:\n");
 		    for (size_t idx = 0; idx < count_num; idx++) {
-			    DEBUG_PRINT("%lu micro sec\n", elapsed_time_tbl[idx].current);
+			    DEBUG_PRINT("%lu counts\n", elapsed_time_tbl[idx].current);
 		    }
 		    DEBUG_PRINT("\nTime collection finished!\n");
 		    collect_time = false;
