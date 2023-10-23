@@ -508,7 +508,8 @@ static void sensorsTask(void *param)
 	 * this is only required by the z-ranger, since the
 	 * configuration will be done after system start-up */
   //vTaskDelayUntil(&lastWakeTime, M2T(1500));
-  while (1)
+//  while (1)
+	for (uint64_t i = 0; i < 1000; i++)
   {
     if (pdTRUE == xSemaphoreTake(sensorsDataReady, portMAX_DELAY))
     {
@@ -644,6 +645,7 @@ static void sensorsTask(void *param)
 
     xSemaphoreGive(dataReady);
   }
+	systemRequestShutdown();
 }
 
 void sensorsBmi088Bmp388WaitDataReady(void)
