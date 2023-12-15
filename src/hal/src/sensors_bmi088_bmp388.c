@@ -509,7 +509,7 @@ static void sensorsTask(void *param)
 	 * configuration will be done after system start-up */
   //vTaskDelayUntil(&lastWakeTime, M2T(1500));
 //  while (1)
-	for (uint64_t i = 0; i < 1000; i++)
+	for (uint64_t i = 0; i < UINT16_MAX; i++)
   {
     if (pdTRUE == xSemaphoreTake(sensorsDataReady, portMAX_DELAY))
     {

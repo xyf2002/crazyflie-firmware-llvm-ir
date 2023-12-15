@@ -83,7 +83,12 @@ bash -c "${cmd}"
 
 if [ "${opt_config}" = "none" ]; then
   echo "without compiler optimization"
-  cmd="cp ${stem}.ll ${stem}_output.ll"
+  compiler_path="/home/pei/Project/Noisy-lang-compiler"
+  current_path=$(pwd)
+  cmd="cp ${stem}.ll ${compiler_path}/applications/newton/llvm-ir/${stem}_output.ll"
+  echo "${cmd}"
+  bash -c "${cmd}"
+  cmd="cd ${current_path} && cp ${compiler_path}/applications/newton/llvm-ir/${stem}_output.ll ${stem}_output.ll"
   echo "${cmd}"
   bash -c "${cmd}"
 elif [ "${opt_config}" = "opt" ]; then
