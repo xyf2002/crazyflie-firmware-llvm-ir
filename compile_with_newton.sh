@@ -2,6 +2,7 @@ set -e
 
 make -j32
 
+
 stem="sensors_bmi088_bmp388"
 obj_file_name="${stem}.o"
 c_file_name="${stem}.c"
