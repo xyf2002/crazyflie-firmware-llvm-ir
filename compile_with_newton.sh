@@ -89,7 +89,7 @@ if [ "${opt_config}" = "none" ]; then
 elif [ "${opt_config}" = "opt" ]; then
   echo "optimize by the CoSense Compiler"
   # change to your compiler path
-  compiler_path="/home/pei/Project/Noisy-lang-compiler"
+  compiler_path="/home/xyf/Noisy-lang-compiler"
   current_path=$(pwd)
   cmd="cp ${stem}.ll ${compiler_path}/applications/newton/llvm-ir/${stem}.ll"
   echo "${cmd}"
