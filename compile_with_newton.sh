@@ -3,7 +3,8 @@ set -e
 make -j32
 
 
-stem="sensors_bmi088_bmp388"
+#stem="sensors_bmi088_bmp388"
+stem="sensfusion6"
 obj_file_name="${stem}.o"
 c_file_name="${stem}.c"
 
@@ -46,7 +47,8 @@ flags="-Wp,-MD,build/src/hal/src/.${obj_file_name}.d \
   -fno-math-errno -DARM_MATH_CM4 -D__FPU_PRESENT=1 \
   -Wno-array-bounds -Wno-stringop-overread -Wno-stringop-overflow \
   -DSTM32F4XX -DSTM32F40_41xxx -DHSE_VALUE=8000000 \
-  -DUSE_STDPERIPH_DRIVER --sysroot=/usr/lib/arm-none-eabi"
+  -DUSE_STDPERIPH_DRIVER --sysroot=/usr/lib/arm-none-eabi\
+  -L/usr/lib/gcc/arm-none-eabi/10.3.1"
 
 opt_config=${OPT_CFG:-none}
 
@@ -75,7 +77,7 @@ if [ -z "${c_file}" ]; then
 fi
 
 echo "compling with ${c_file}"
-cmd="clang -g -O0 -Xclang -disable-O0-optnone -emit-llvm -S ${flags} -o tmp.ll -c ${c_file}"
+cmd="clang -g0 -O0 -Xclang -disable-O0-optnone -emit-llvm -S ${flags} -o tmp.ll -c ${c_file}"
 echo "${cmd}"
 bash -c "${cmd}"
 cmd="opt tmp.ll --mem2reg --instsimplify -S -o ${stem}.ll"
