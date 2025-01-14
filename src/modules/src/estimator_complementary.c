@@ -49,6 +49,69 @@ static tofMeasurement_t tof;
 #define POS_UPDATE_RATE RATE_100_HZ
 #define POS_UPDATE_DT 1.0/POS_UPDATE_RATE
 
+
+//#define  ELAPSED_TIME_MAX_SECTIONS  15
+//
+//typedef  struct  elapsed_time {
+//    uint32_t  start;
+//    uint32_t  current;
+//    uint32_t  max;
+//    uint32_t  min;
+//} ELAPSED_TIME;
+//
+//static  ELAPSED_TIME  elapsed_time_tbl[ELAPSED_TIME_MAX_SECTIONS];
+//
+//void  elapsed_time_clr (uint32_t  i)
+//{
+//  ELAPSED_TIME  *p_tbl;
+//
+//
+//  p_tbl          = &elapsed_time_tbl[i];
+//  p_tbl->start   = 0;
+//  p_tbl->current = 0;
+//  p_tbl->min     = 0xFFFFFFFF;
+//  p_tbl->max     = 0;
+//}
+//
+//void  elapsed_time_init (void)
+//{
+//  uint32_t  i;
+//
+//
+//  if (ARM_CM_DWT_CTRL != 0) {                  // See if DWT is available
+//    ARM_CM_DEMCR      |= 1 << 24;            // Set bit 24
+//    ARM_CM_DWT_CYCCNT  = 0;
+//    ARM_CM_DWT_CTRL   |= 1 << 0;             // Set bit 0
+//  }
+//  for (i = 0; i < ELAPSED_TIME_MAX_SECTIONS; i++) {
+//    elapsed_time_clr(i);
+//  }
+//}
+//
+//void  elapsed_time_start (uint32_t  i)
+//{
+//  elapsed_time_tbl[i].start = ARM_CM_DWT_CYCCNT;
+//}
+//
+//void  elapsed_time_stop (uint32_t  i)
+//{
+//  uint32_t       stop;
+//  ELAPSED_TIME  *p_tbl;
+//
+//  stop           = ARM_CM_DWT_CYCCNT;
+//  p_tbl          = &elapsed_time_tbl[i];
+//  p_tbl->current = stop - p_tbl->start;
+//  if (p_tbl->max < p_tbl->current) {
+//    p_tbl->max = p_tbl->current;
+//  }
+//  if (p_tbl->min > p_tbl->current) {
+//    p_tbl->min = p_tbl->current;
+//  }
+//}
+
+
+
+
     void
     estimatorComplementaryInit(void)
 {
@@ -90,9 +153,17 @@ void estimatorComplementary(state_t *state, const uint32_t tick)
 
   // Update filter
   if (RATE_DO_EXECUTE(ATTITUDE_UPDATE_RATE, tick)) {
+//    sensfusion6UpdateQ(gyro.x, gyro.y, gyro.z,
+//                        acc.x, acc.y, acc.z,
+//                        ATTITUDE_UPDATE_DT);
+
     sensfusion6UpdateQ(gyro.x, gyro.y, gyro.z,
                         acc.x, acc.y, acc.z,
-                        ATTITUDE_UPDATE_DT);
+                        ATTITUDE_UPDATE_DT,
+                        &state->attitudeQuaternion.x,
+                        &state->attitudeQuaternion.y,
+                        &state->attitudeQuaternion.z,
+                        &state->attitudeQuaternion.w);
 
     // Save attitude, adjusted for the legacy CF2 body coordinate system
     sensfusion6GetEulerRPY(&state->attitude.roll, &state->attitude.pitch, &state->attitude.yaw);

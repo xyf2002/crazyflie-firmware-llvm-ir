@@ -65,7 +65,7 @@ static bool isInit;
 
 static bool isCalibrated = false;
 
-static void sensfusion6UpdateQImpl(float gx, float gy, float gz, float ax, float ay, float az, float dt);
+static void sensfusion6UpdateQImpl(float gx, float gy, float gz, float ax, float ay, float az, float dt, float* qw_ptr, float* qx_ptr, float* qy_ptr, float* qz_ptr);
 static float sensfusion6GetAccZ(const float ax, const float ay, const float az);
 static void estimatedGravityDirection(float* gx, float* gy, float* gz);
 
@@ -85,9 +85,9 @@ bool sensfusion6Test(void)
   return isInit;
 }
 
-void sensfusion6UpdateQ(float gx, float gy, float gz, float ax, float ay, float az, float dt)
+void sensfusion6UpdateQ(float gx, float gy, float gz, float ax, float ay, float az, float dt, float *qw_ptr, float *qx_ptr, float *qy_ptr, float *qz_ptr)
 {
-  sensfusion6UpdateQImpl(gx, gy, gz, ax, ay, az, dt);
+  sensfusion6UpdateQImpl(gx, gy, gz, ax, ay, az, dt, qw_ptr, qx_ptr, qy_ptr, qz_ptr);
   estimatedGravityDirection(&gravX, &gravY, &gravZ);
 
   if (!isCalibrated) {
@@ -96,6 +96,8 @@ void sensfusion6UpdateQ(float gx, float gy, float gz, float ax, float ay, float 
   }
 }
 
+
+
 #ifdef CONFIG_IMU_MADGWICK_QUATERNION
 // Implementation of Madgwick's IMU and AHRS algorithms.
 // See: http://www.x-io.co.uk/open-source-ahrs-with-x-imu
@@ -103,8 +105,16 @@ void sensfusion6UpdateQ(float gx, float gy, float gz, float ax, float ay, float 
 // Date     Author          Notes
 // 29/09/2011 SOH Madgwick    Initial release
 // 02/10/2011 SOH Madgwick  Optimised for reduced CPU load
-static void sensfusion6UpdateQImpl(float gx, float gy, float gz, float ax, float ay, float az, float dt)
+static void sensfusion6UpdateQImpl(float gx, float gy, float gz, float ax, float ay, float az, float dt,float* qw_ptr, float* qx_ptr, float* qy_ptr, float* qz_ptr)
 {
+
+  float qw = *qw_ptr;
+  float qx = *qx_ptr;
+  float qy = *qy_ptr;
+  float qz = *qz_ptr;
+
+
+
   float recipNorm;
   float s0, s1, s2, s3;
   float qDot1, qDot2, qDot3, qDot4;
@@ -170,6 +180,14 @@ static void sensfusion6UpdateQImpl(float gx, float gy, float gz, float ax, float
   qx *= recipNorm;
   qy *= recipNorm;
   qz *= recipNorm;
+
+  // Store results in the output pointers
+  *qw_ptr = qw;
+  *qx_ptr = qx;
+  *qy_ptr = qy;
+  *qz_ptr = qz;
+
+
 }
 #else
 // Madgwick's implementation of Mahony's AHRS algorithm.

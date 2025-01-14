@@ -5,6 +5,7 @@ make -j32
 
 #stem="sensors_bmi088_bmp388"
 stem="sensfusion6"
+#stem="estimator_complementary"
 obj_file_name="${stem}.o"
 c_file_name="${stem}.c"
 
