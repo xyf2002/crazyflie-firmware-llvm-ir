@@ -3,14 +3,14 @@ set -e
 make -j32
 
 
-#stem="sensors_bmi088_bmp388"
 stem="sensfusion6"
-#stem="estimator_complementary"
+
 obj_file_name="${stem}.o"
 c_file_name="${stem}.c"
 
 obj_file=$(find ./build -type f -name "${obj_file_name}")
 c_file=$(find ./src -type f -name "${c_file_name}")
+
 
 flags="-Wp,-MD,build/src/hal/src/.${obj_file_name}.d \
   -Isrc/hal/src -D__firmware__ -fno-exceptions \
@@ -93,18 +93,17 @@ if [ "${opt_config}" = "none" ]; then
 elif [ "${opt_config}" = "opt" ]; then
   echo "optimize by the CoSense Compiler"
   # change to your compiler path
-  compiler_path="/home/xyf/Noisy-lang-compiler"
+  compiler_path="/home/xyf/CoSense"
   current_path=$(pwd)
   cmd="cp ${stem}.ll ${compiler_path}/applications/newton/llvm-ir/${stem}.ll"
   echo "${cmd}"
   bash -c "${cmd}"
   cmd="cd ${compiler_path}/src/newton && ./newton-linux-EN \
   --llvm-ir=../../applications/newton/llvm-ir/${stem}.ll \
-  --llvm-ir-liveness-check ../../applications/newton/sensors/BMX055.nt"
+  --llvm-ir-liveness-check --llvm-ir-auto-quantization ../../applications/newton/sensors/BMX055.nt"
   echo "${cmd}"
   bash -c "${cmd}"
-  cmd="llvm-dis ${compiler_path}/applications/newton/llvm-ir/${stem}_output.bc \
-  -o ${compiler_path}/applications/newton/llvm-ir/${stem}_output.ll"
+
   echo "${cmd}"
   bash -c "${cmd}"
   cmd="cd ${current_path} && cp ${compiler_path}/applications/newton/llvm-ir/${stem}_output.ll ${stem}_output.ll"
