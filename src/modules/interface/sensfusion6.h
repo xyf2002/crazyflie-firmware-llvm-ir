@@ -31,8 +31,8 @@ void sensfusion6Init(void);
 bool sensfusion6Test(void);
 
 
-void sensfusion6UpdateQ(float gx, float gy, float gz, float ax, float ay, float az, float dt,float* qw_ptr, float* qx_ptr, float* qy_ptr, float* qz_ptr);
-//void sensfusion6UpdateQ(float gx, float gy, float gz, float ax, float ay, float az, float dt);
+//void sensfusion6UpdateQ(float gx, float gy, float gz, float ax, float ay, float az, float dt,float* qw_ptr, float* qx_ptr, float* qy_ptr, float* qz_ptr);
+void sensfusion6UpdateQ(float gx, float gy, float gz, float ax, float ay, float az, float dt);
 //void sensfusion6UpdateQ(float gx, float gy, float gz, float ax, float ay, float az, float dt ,float dt,float* q0_ptr, float* q1_ptr, float* q2_ptr, float* q3_ptr);
 //void sensfusion6UpdateQ(float gx, float gy, float gz, float ax, float ay, float az, float mx, float my, float mz, float dt,float* q0_ptr, float* q1_ptr, float* q2_ptr, float* q3_ptr);
 

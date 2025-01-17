@@ -32,22 +32,26 @@
 
 #include "autoconf.h"
 
+#define CONFIG_IMU_MADGWICK_QUATERNION
+
 #ifdef CONFIG_IMU_MADGWICK_QUATERNION
-  #define BETA_DEF     0.01f    // 2 * proportional gain
+#define BETA_DEF     0.01f    // 2 * proportional gain
 #else // MAHONY_QUATERNION_IMU
-    #define TWO_KP_DEF  (2.0f * 0.4f) // 2 * proportional gain
-    #define TWO_KI_DEF  (2.0f * 0.001f) // 2 * integral gain
+#define TWO_KP_DEF  (2.0f * 0.4f) // 2 * proportional gain
+#define TWO_KI_DEF  (2.0f * 0.001f) // 2 * integral gain
 #endif
 
 #ifdef CONFIG_IMU_MADGWICK_QUATERNION
-  float beta = BETA_DEF;     // 2 * proportional gain (Kp)
+float beta = BETA_DEF;     // 2 * proportional gain (Kp)
 #else // MAHONY_QUATERNION_IMU
-  float twoKp = TWO_KP_DEF;    // 2 * proportional gain (Kp)
-  float twoKi = TWO_KI_DEF;    // 2 * integral gain (Ki)
-  float integralFBx = 0.0f;
-  float integralFBy = 0.0f;
-  float integralFBz = 0.0f;  // integral error terms scaled by Ki
+float twoKp = TWO_KP_DEF;    // 2 * proportional gain (Kp)
+float twoKi = TWO_KI_DEF;    // 2 * integral gain (Ki)
+float integralFBx = 0.0f;
+float integralFBy = 0.0f;
+float integralFBz = 0.0f;  // integral error terms scaled by Ki
 #endif
+
+
 
 float qw = 1.0f;
 float qx = 0.0f;
@@ -65,7 +69,7 @@ static bool isInit;
 
 static bool isCalibrated = false;
 
-static void sensfusion6UpdateQImpl(float gx, float gy, float gz, float ax, float ay, float az, float dt, float* qw_ptr, float* qx_ptr, float* qy_ptr, float* qz_ptr);
+static void sensfusion6UpdateQImpl(float gx, float gy, float gz, float ax, float ay, float az, float dt);
 static float sensfusion6GetAccZ(const float ax, const float ay, const float az);
 static void estimatedGravityDirection(float* gx, float* gy, float* gz);
 
@@ -85,9 +89,9 @@ bool sensfusion6Test(void)
   return isInit;
 }
 
-void sensfusion6UpdateQ(float gx, float gy, float gz, float ax, float ay, float az, float dt, float *qw_ptr, float *qx_ptr, float *qy_ptr, float *qz_ptr)
+void sensfusion6UpdateQ(float gx, float gy, float gz, float ax, float ay, float az, float dt)
 {
-  sensfusion6UpdateQImpl(gx, gy, gz, ax, ay, az, dt, qw_ptr, qx_ptr, qy_ptr, qz_ptr);
+  sensfusion6UpdateQImpl(gx, gy, gz, ax, ay, az, dt);
   estimatedGravityDirection(&gravX, &gravY, &gravZ);
 
   if (!isCalibrated) {
@@ -96,8 +100,6 @@ void sensfusion6UpdateQ(float gx, float gy, float gz, float ax, float ay, float 
   }
 }
 
-
-
 #ifdef CONFIG_IMU_MADGWICK_QUATERNION
 // Implementation of Madgwick's IMU and AHRS algorithms.
 // See: http://www.x-io.co.uk/open-source-ahrs-with-x-imu
@@ -105,16 +107,8 @@ void sensfusion6UpdateQ(float gx, float gy, float gz, float ax, float ay, float 
 // Date     Author          Notes
 // 29/09/2011 SOH Madgwick    Initial release
 // 02/10/2011 SOH Madgwick  Optimised for reduced CPU load
-static void sensfusion6UpdateQImpl(float gx, float gy, float gz, float ax, float ay, float az, float dt,float* qw_ptr, float* qx_ptr, float* qy_ptr, float* qz_ptr)
+static void sensfusion6UpdateQImpl(float gx, float gy, float gz, float ax, float ay, float az, float dt)
 {
-
-  float qw = *qw_ptr;
-  float qx = *qx_ptr;
-  float qy = *qy_ptr;
-  float qz = *qz_ptr;
-
-
-
   float recipNorm;
   float s0, s1, s2, s3;
   float qDot1, qDot2, qDot3, qDot4;
@@ -180,14 +174,6 @@ static void sensfusion6UpdateQImpl(float gx, float gy, float gz, float ax, float
   qx *= recipNorm;
   qy *= recipNorm;
   qz *= recipNorm;
-
-  // Store results in the output pointers
-  *qw_ptr = qw;
-  *qx_ptr = qx;
-  *qy_ptr = qy;
-  *qz_ptr = qz;
-
-
 }
 #else
 // Madgwick's implementation of Mahony's AHRS algorithm.
@@ -337,43 +323,43 @@ LOG_GROUP_START(sensfusion6)
 /**
  * @brief W quaternion
  */
-  LOG_ADD(LOG_FLOAT, qw, &qw)
+                LOG_ADD(LOG_FLOAT, qw, &qw)
 /**
  * @brief X quaternion
  */
-  LOG_ADD(LOG_FLOAT, qx, &qx)
+                LOG_ADD(LOG_FLOAT, qx, &qx)
 /**
  * @brief y quaternion
  */
-  LOG_ADD(LOG_FLOAT, qy, &qy)
+                LOG_ADD(LOG_FLOAT, qy, &qy)
 /**
  * @brief z quaternion
  */
-  LOG_ADD(LOG_FLOAT, qz, &qz)
+                LOG_ADD(LOG_FLOAT, qz, &qz)
 /**
  * @brief Gravity vector X
  */
-  LOG_ADD(LOG_FLOAT, gravityX, &gravX)
+                LOG_ADD(LOG_FLOAT, gravityX, &gravX)
 /**
  * @brief Gravity vector Y
  */
-  LOG_ADD(LOG_FLOAT, gravityY, &gravY)
+                LOG_ADD(LOG_FLOAT, gravityY, &gravY)
 /**
  * @brief Gravity vector Z
  */
-  LOG_ADD(LOG_FLOAT, gravityZ, &gravZ)
+                LOG_ADD(LOG_FLOAT, gravityZ, &gravZ)
 /**
  * @brief Gravity scale factor after calibration
  */
-  LOG_ADD(LOG_FLOAT, accZbase, &baseZacc)
+                LOG_ADD(LOG_FLOAT, accZbase, &baseZacc)
 /**
  * @brief Nonzero if complimentary filter been initialized
  */
-  LOG_ADD(LOG_UINT8, isInit, &isInit)
+                LOG_ADD(LOG_UINT8, isInit, &isInit)
 /**
  * @brief Nonzero if gravity scale been calibrated
  */
-  LOG_ADD(LOG_UINT8, isCalibrated, &isCalibrated)
+                LOG_ADD(LOG_UINT8, isCalibrated, &isCalibrated)
 LOG_GROUP_STOP(sensfusion6)
 
 /**
@@ -386,17 +372,17 @@ LOG_GROUP_STOP(sensfusion6)
  */
 PARAM_GROUP_START(sensfusion6)
 #ifdef CONFIG_IMU_MADGWICK_QUATERNION
-PARAM_ADD(PARAM_FLOAT, beta, &beta)
+                PARAM_ADD(PARAM_FLOAT, beta, &beta)
 #else // MAHONY_QUATERNION_IMU
 /**
  * @brief Integral gain (default: 0.002)
  */
-PARAM_ADD_CORE(PARAM_FLOAT | PARAM_PERSISTENT, kp, &twoKp)
+                PARAM_ADD_CORE(PARAM_FLOAT | PARAM_PERSISTENT, kp, &twoKp)
 
 /**
  * @brief Propotional gain (default: 0.8)
  */
-PARAM_ADD_CORE(PARAM_FLOAT | PARAM_PERSISTENT, ki, &twoKi)
+                PARAM_ADD_CORE(PARAM_FLOAT | PARAM_PERSISTENT, ki, &twoKi)
 #endif
-PARAM_ADD(PARAM_FLOAT, baseZacc, &baseZacc)
+                PARAM_ADD(PARAM_FLOAT, baseZacc, &baseZacc)
 PARAM_GROUP_STOP(sensfusion6)
